@@ -221,7 +221,13 @@ export function CameraLiveFeed({
                 const tgData = await tgRes.json().catch(() => ({}))
 
                 setAutoAlertCount((prev) => prev + 1)
-                const timeStr = new Date().toLocaleTimeString('vi-VN')
+                const timeStr = new Intl.DateTimeFormat('vi-VN', {
+                  timeZone: 'Etc/GMT-8',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                }).format(new Date())
                 setTelegramAlertFlash({ plate: data.detection.plateNumber, time: timeStr })
                 setTimeout(() => setTelegramAlertFlash(null), 3500)
 

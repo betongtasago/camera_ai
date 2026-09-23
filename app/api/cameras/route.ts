@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       ipAddress: ipAddress?.trim() || '192.168.1.108',
       port: port ? Number(port) : 554,
       username: username?.trim() || 'admin',
-      password: password ? '••••••••' : undefined,
+      password: password?.trim() || undefined,
       fps: fps ? Number(fps) : 30,
       isOnline: true,
       aiDetectionEnabled: true,
@@ -84,6 +84,7 @@ export async function PUT(req: NextRequest) {
       ipAddress,
       port,
       username,
+      password,
       isOnline,
       aiDetectionEnabled,
       autoZoomPlate,
@@ -105,6 +106,10 @@ export async function PUT(req: NextRequest) {
       ipAddress: ipAddress !== undefined ? ipAddress.trim() : existing?.ipAddress || '192.168.1.108',
       port: port ? Number(port) : existing?.port || 554,
       username: username !== undefined ? username.trim() : existing?.username || 'admin',
+      password:
+        password !== undefined && password.trim() && password !== '••••••••'
+          ? password.trim()
+          : existing?.password,
       isOnline: isOnline !== undefined ? isOnline : existing?.isOnline === true,
       aiDetectionEnabled:
         aiDetectionEnabled !== undefined ? aiDetectionEnabled : existing?.aiDetectionEnabled !== false,

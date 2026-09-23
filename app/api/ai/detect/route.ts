@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { getGlobalVehicles, addGlobalLog, getGlobalLogs, getGlobalCameras } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
-import { dbGetVehicles, dbAddDetectionLog } from '@/lib/supabase'
+import { dbAddDetectionLog } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 
 export async function POST(req: NextRequest) {
@@ -92,16 +92,8 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       }
     }
 
-    // Check against registered vehicles from Supabase and global memory
-    let fleet: Vehicle[] = getGlobalVehicles()
-    try {
-      const fromDb = await dbGetVehicles()
-      if (fromDb && fromDb.length > 0) {
-        fleet = fromDb
-      }
-    } catch {
-      fleet = getGlobalVehicles()
-    }
+    // The registered vehicle list in the app is authoritative for camera matching.
+    const fleet: Vehicle[] = getGlobalVehicles()
 
     const cleanDetectedPlate = detectedPlate.replace(/[^A-Z0-9]/g, '')
     const matched = fleet.find((v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanDetectedPlate)

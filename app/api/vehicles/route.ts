@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getGlobalVehicles,
-  setGlobalVehicles,
   addGlobalVehicle,
   updateGlobalVehicle,
   deleteGlobalVehicle,
 } from '@/lib/storage'
 import { Vehicle } from '@/lib/types'
-import { dbGetVehicles, dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
+import { dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 
 export async function GET(req: NextRequest) {
@@ -15,20 +14,10 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get('q')?.toLowerCase() || ''
   const status = searchParams.get('status')
 
-  // Load from Supabase (or fallback to global memory)
-  let results: Vehicle[] = []
-  try {
-    const dbList = await dbGetVehicles()
-    if (dbList !== null) {
-      setGlobalVehicles(dbList)
-      results = dbList
-    } else {
-      results = getGlobalVehicles()
-    }
-  } catch {
-    console.error('Error retrieving vehicles from database')
-    results = getGlobalVehicles()
-  }
+  // App memory is the source of truth; Supabase receives a replica of the current list.
+  const sourceVehicles = getGlobalVehicles()
+  await Promise.all(sourceVehicles.map((vehicle) => dbAddVehicle(vehicle)))
+  let results: Vehicle[] = [...sourceVehicles]
 
   if (query) {
     results = results.filter(

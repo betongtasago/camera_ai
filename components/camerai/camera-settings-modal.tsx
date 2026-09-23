@@ -76,7 +76,7 @@ export function CameraSettingsModal({
   const [ipAddress, setIpAddress] = useState(currentCamera.ipAddress || '192.168.1.108')
   const [port, setPort] = useState(String(currentCamera.port || 554))
   const [username, setUsername] = useState(currentCamera.username || 'admin')
-  const [password, setPassword] = useState('CamerAI@2026')
+  const [password, setPassword] = useState(currentCamera.password || '')
   const [showPassword, setShowPassword] = useState(false)
   const [streamUrl, setStreamUrl] = useState(
     currentCamera.streamUrl || 'rtsp://admin:••••••••@192.168.1.108:554/Streaming/Channels/101',
@@ -104,6 +104,7 @@ export function CameraSettingsModal({
       setIpAddress(currentCamera.ipAddress || '192.168.1.108')
       setPort(String(currentCamera.port || 554))
       setUsername(currentCamera.username || 'admin')
+      setPassword(currentCamera.password || '')
       setStreamUrl(
         currentCamera.streamUrl ||
           `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
@@ -245,6 +246,7 @@ export function CameraSettingsModal({
           ipAddress,
           port: Number(port),
           username,
+          password,
           streamUrl,
           autoZoomPlate: autoZoom,
           aiDetectionEnabled: aiDetection,
@@ -273,6 +275,7 @@ export function CameraSettingsModal({
           ipAddress,
           port: Number(port),
           username,
+          password,
           streamUrl,
           autoZoomPlate: autoZoom,
           aiDetectionEnabled: aiDetection,
