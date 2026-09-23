@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getGlobalTelegramConfig, setGlobalTelegramConfig } from '@/lib/storage'
+
+// GET: Retrieve telegram settings
+export async function GET() {
+  const telegramConfig = getGlobalTelegramConfig()
+  return NextResponse.json({
+    config: {
+      ...telegramConfig,
+      // Mask token slightly for privacy if set
+      botToken: telegramConfig.botToken
+        ? telegramConfig.botToken.substring(0, 8) + '••••••••' + telegramConfig.botToken.slice(-4)
+        : '',
+      hasToken: Boolean(telegramConfig.botToken),
+      rawToken: telegramConfig.botToken,
+    },
+  })
+}
+
+// PUT: Update telegram settings
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const updated = setGlobalTelegramConfig({
+      ...(body.botToken !== undefined && { botToken: body.botToken }),
+      ...(body.chatId !== undefined && { chatId: body.chatId }),
+      ...(body.enabled !== undefined && { enabled: Boolean(body.enabled) }),
+      ...(body.notifyOnAllVehicles !== undefined && {
+        notifyOnAllVehicles: Boolean(body.notifyOnAllVehicles),
+      }),
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Cập nhật cấu hình Telegram thành công',
+      config: updated,
+    })
+  } catch {
+    console.error('Error updating telegram config')
+    return NextResponse.json({ error: 'Không thể cập nhật cấu hình Telegram' }, { status: 500 })
+  }
+}

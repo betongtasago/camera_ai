@@ -1,0 +1,8 @@
+{
+  "name": "CamerAI - Giám sát Camera IP & Nhận diện Biển số Xe AI",
+  "description": "Hệ thống giám sát camera IP thông minh, AI tự động nhận dạng xe di chuyển từ xa lại gần, phóng to zoom biển số (LPR/ANPR), đối soát danh mục xe (biển số, tài xế, loại xe) và cảnh báo theo thời gian thực.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
