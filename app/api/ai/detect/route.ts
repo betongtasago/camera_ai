@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { getGlobalVehicles, addGlobalLog, getGlobalLogs } from '@/lib/storage'
+import { getGlobalVehicles, addGlobalLog, getGlobalLogs, getGlobalCameras } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
 import { dbGetVehicles, dbAddDetectionLog } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
@@ -8,6 +8,11 @@ import { broadcastRealtime } from '@/lib/realtime'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    const requestedCameraId = body.cameraId as string | undefined
+    const camera = getGlobalCameras().find((item) => item.id === requestedCameraId)
+    if (!camera || camera.isOnline !== true) {
+      return NextResponse.json({ error: 'Không có tín hiệu camera thực tế. Vui lòng kiểm tra kết nối trong Cấu hình camera.' }, { status: 409 })
+    }
     const { imageBase64, cameraId, cameraName, locationTag, simulatedPlate } = body
 
     const targetCameraId = cameraId || 'cam_01'

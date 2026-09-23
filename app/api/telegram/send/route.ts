@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DetectionResult } from '@/lib/types'
 import { getGlobalTelegramConfig } from '@/lib/storage'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Chỉ tài khoản Admin mới được gửi báo cáo Telegram' }, { status: 403 })
+    }
     const body = await req.json()
     const { token, chatId, detection, testMessage } = body
 
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
       }
 
       const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
-      const text = `🔔 *[CamerAI] KIỂM TRA KẾT NỐI TELEGRAM BOT*\n\n✅ Kết nối thành công tới hệ thống giám sát Camera IP & Nhận diện Biển số Xe!\n⏱️ Thời gian: ${new Date().toLocaleString('vi-VN')}`
+      const text = `🔔 *[CamerAI] KIỂM TRA KẾT NỐI TELEGRAM BOT*\n\n✅ Kết nối thành công tới hệ thống giám sát Camera IP & Nhận diện Biển số Xe!\n⏱️ Thời gian: ${new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`
 
       const res = await fetch(telegramUrl, {
         method: 'POST',
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Thiếu dữ liệu xe nhận diện' }, { status: 400 })
     }
 
-    const timeStr = new Date(det.timestamp || new Date()).toLocaleString('vi-VN')
+    const timeStr = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(det.timestamp || new Date()))
     const matchStatus = det.isMatch ? '✅ *XE ĐÃ ĐĂNG KÝ*' : '⚠️ *XE NGOÀI DANH MỤC*'
 
     const messageText = [

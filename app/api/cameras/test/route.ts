@@ -1,4 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import net from 'node:net'
+import { updateGlobalCamera } from '@/lib/storage'
+import { broadcastRealtime } from '@/lib/realtime'
+
+function canOpenTcp(host: string, port: number, timeoutMs = 2500): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const started = Date.now()
+    const socket = net.createConnection({ host, port })
+    const timer = setTimeout(() => {
+      socket.destroy()
+      reject(new Error('timeout'))
+    }, timeoutMs)
+    socket.once('connect', () => {
+      clearTimeout(timer)
+      socket.end()
+      resolve(Date.now() - started)
+    })
+    socket.once('error', (error) => {
+      clearTimeout(timer)
+      socket.destroy()
+      reject(error)
+    })
+  })
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,8 +54,25 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Measure simulated connection latency
-    const latency = Math.floor(10 + Math.random() * 15) // 10-25ms
+    let latency: number
+    try {
+      latency = await canOpenTcp(targetIp, targetPort)
+    } catch {
+      if (body.id) {
+        const existing = { ...body, isOnline: false }
+        updateGlobalCamera(existing)
+        broadcastRealtime({ type: 'cameras_updated', camera: existing, timestamp: Date.now() })
+      }
+      return NextResponse.json(
+        { success: false, error: 'Không nhận được tín hiệu camera tại ' + targetIp + ':' + targetPort + '. Hãy kiểm tra IP, cổng RTSP và nguồn điện mạng.' },
+        { status: 502 },
+      )
+    }
+    if (body.id) {
+      const updated = { ...body, isOnline: true, streamUrl: body.streamUrl || undefined, createdAt: body.createdAt || new Date().toISOString() }
+      updateGlobalCamera(updated)
+      broadcastRealtime({ type: 'cameras_updated', camera: updated, timestamp: Date.now() })
+    }
 
     // Construct standard RTSP URL if not provided
     const resolvedStreamUrl =

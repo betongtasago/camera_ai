@@ -169,6 +169,7 @@ export default function HomePage() {
 
   // Member role restriction: Members only have access to view Camera AI
   const isMember = currentUser?.role === 'member'
+  const isAdmin = currentUser?.role === 'admin'
 
   useEffect(() => {
     if (isMember && activeTab !== 'monitor') {
@@ -440,17 +441,17 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Live Camera Video / Simulation with AI Overlay */}
               <div className="lg:col-span-8 flex flex-col gap-3">
-                <CameraLiveFeed
+                {isAdmin && <CameraLiveFeed
                   currentCamera={currentCamera}
                   onDetectionTriggered={handleDetectionTriggered}
                   userRole={currentUser?.role}
                   telegramAutoNotify={telegramAutoNotify}
                   onToggleTelegramAutoNotify={setTelegramAutoNotify}
-                />
+                />}
               </div>
 
               {/* Right Column: Live Detection & Fleet Verification Inspector */}
-              <div className="lg:col-span-4 flex flex-col gap-4">
+              <div className={`lg:col-span-4 flex flex-col gap-4 ${!isAdmin ? 'hidden' : ''}`}>
                 {/* Active Match Card */}
                 <div
                   className={`bg-card border rounded-xl p-4 sm:p-5 shadow-sm transition-all ${
@@ -521,7 +522,7 @@ export default function HomePage() {
                     <div className="flex justify-between py-1">
                       <span className="text-muted-foreground">Thời gian:</span>
                       <span className="font-mono text-muted-foreground" suppressHydrationWarning>
-                        {isMounted ? new Date(latestDetection.timestamp).toLocaleTimeString('vi-VN') : '16:36:08'}
+                        {isMounted ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(latestDetection.timestamp)) : '--:--:--'}
                       </span>
                     </div>
                   </div>
@@ -574,13 +575,13 @@ export default function HomePage() {
                       </Button>
                     </div>
 
-                    <Button
+                    {isAdmin && <Button
                       onClick={handleSendTelegram}
                       className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       GỬI BÁO CÁO QUA TELEGRAM
-                    </Button>
+                    </Button>}
 
                     {!latestDetection.isMatch && !isMember && (
                       <Button

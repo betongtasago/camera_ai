@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q')?.toLowerCase() || ''
   const status = searchParams.get('status')
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
 
   let list: DetectionResult[] = []
   try {
@@ -35,6 +37,8 @@ export async function GET(req: NextRequest) {
   if (status && status !== 'all') {
     list = list.filter((e) => e.status === status)
   }
+  if (from) list = list.filter((e) => new Date(e.timestamp).getTime() >= new Date(from + 'T00:00:00+08:00').getTime())
+  if (to) list = list.filter((e) => new Date(e.timestamp).getTime() <= new Date(to + 'T23:59:59+08:00').getTime())
 
   return NextResponse.json({ events: list, total: list.length })
 }

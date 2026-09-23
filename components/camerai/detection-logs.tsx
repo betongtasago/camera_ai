@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   ClipboardList,
   CheckCircle2,
@@ -42,16 +42,19 @@ export function DetectionLogs({
   onLogsChanged,
 }: DetectionLogsProps) {
   const [filter, setFilter] = useState<'all' | 'passed' | 'warning'>('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [isClearModalOpen, setIsClearModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [logToDelete, setLogToDelete] = useState<DetectionResult | null>(null)
 
-  const filteredLogs = logs.filter((log) => {
-    if (filter === 'all') return true
-    if (filter === 'passed') return log.isMatch
-    if (filter === 'warning') return !log.isMatch
+  const filteredLogs = useMemo(() => logs.filter((log) => {
+    if (filter === 'passed' && !log.isMatch) return false
+    if (filter === 'warning' && log.isMatch) return false
+    if (fromDate && new Date(log.timestamp).getTime() < new Date(`${fromDate}T00:00:00+08:00`).getTime()) return false
+    if (toDate && new Date(log.timestamp).getTime() > new Date(`${toDate}T23:59:59+08:00`).getTime()) return false
     return true
-  })
+  }), [logs, filter, fromDate, toDate])
 
   const handleSendTelegram = async (log: DetectionResult) => {
     try {
@@ -119,7 +122,7 @@ export function DetectionLogs({
     const rows = logs.map((l, i) =>
       [
         i + 1,
-        `"${new Date(l.timestamp).toLocaleString('vi-VN')}"`,
+        `"${new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(l.timestamp))}"`,
         `"${l.locationTag || l.cameraName}"`,
         `"${l.plateNumber}"`,
         `"${l.matchedVehicle?.driverName || 'Chưa đăng ký'}"`,
@@ -248,7 +251,7 @@ export function DetectionLogs({
                     <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
                       <div className="flex items-center gap-1.5" suppressHydrationWarning>
                         <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                        {new Date(log.timestamp).toLocaleTimeString('vi-VN')}
+                        {new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(log.timestamp))}
                       </div>
                     </td>
                     <td className="px-4 py-3.5 font-mono text-xs text-foreground font-semibold">
@@ -293,7 +296,7 @@ export function DetectionLogs({
                           size="sm"
                           variant="outline"
                           onClick={() => handleSendTelegram(log)}
-                          className="text-xs h-8 px-2.5 font-medium border-sky-500/40 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10"
+                          className={`text-xs h-8 px-2.5 font-medium border-sky-500/40 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 ${userRole !== 'admin' ? 'hidden' : ''}`}
                         >
                           <Send className="w-3.5 h-3.5 mr-1" />
                           Báo Telegram
@@ -379,7 +382,7 @@ export function DetectionLogs({
                       size="sm"
                       variant="outline"
                       onClick={() => handleSendTelegram(log)}
-                      className="h-8 text-xs px-2.5 border-sky-500/40 text-sky-600 dark:text-sky-400"
+                      className={`h-8 text-xs px-2.5 border-sky-500/40 text-sky-600 dark:text-sky-400 ${userRole !== 'admin' ? 'hidden' : ''}`}
                     >
                       <Send className="w-3.5 h-3.5 mr-1" />
                       Telegram

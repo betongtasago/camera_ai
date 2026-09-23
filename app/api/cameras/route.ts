@@ -105,7 +105,7 @@ export async function PUT(req: NextRequest) {
       ipAddress: ipAddress !== undefined ? ipAddress.trim() : existing?.ipAddress || '192.168.1.108',
       port: port ? Number(port) : existing?.port || 554,
       username: username !== undefined ? username.trim() : existing?.username || 'admin',
-      isOnline: isOnline !== undefined ? isOnline : existing?.isOnline !== false,
+      isOnline: isOnline !== undefined ? isOnline : existing?.isOnline === true,
       aiDetectionEnabled:
         aiDetectionEnabled !== undefined ? aiDetectionEnabled : existing?.aiDetectionEnabled !== false,
       autoZoomPlate: autoZoomPlate !== undefined ? autoZoomPlate : existing?.autoZoomPlate !== false,

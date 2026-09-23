@@ -52,6 +52,7 @@ export function CameraLiveFeed({
 
   // Stream state
   const [isPlaying, setIsPlaying] = useState(true)
+  const hasRealSignal = currentCamera.isOnline === true
   const [isApproaching, setIsApproaching] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [zoomEnabled, setZoomEnabled] = useState(true)
@@ -161,9 +162,16 @@ export function CameraLiveFeed({
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date()
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      const ss = String(now.getSeconds()).padStart(2, '0')
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Etc/GMT-8',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).formatToParts(now)
+      const hh = parts.find((part) => part.type === 'hour')?.value || '00'
+      const mm = parts.find((part) => part.type === 'minute')?.value || '00'
+      const ss = parts.find((part) => part.type === 'second')?.value || '00'
       setCurrentTimeStr(`${hh}:${mm}:${ss}`)
     }, 1000)
     return () => clearInterval(timer)
@@ -172,6 +180,10 @@ export function CameraLiveFeed({
   // Call AI API to evaluate detection & auto-dispatch Telegram
   const runAiAnalysis = useCallback(
     async (simulatedPlate = customPlateInput) => {
+      if (!hasRealSignal) {
+        toast.error('Chưa có tín hiệu camera thực tế. Hãy kiểm tra trong Cấu hình camera.')
+        return
+      }
       setIsAnalyzing(true)
       try {
         let snapshotData = ''
@@ -230,12 +242,12 @@ export function CameraLiveFeed({
         setIsAnalyzing(false)
       }
     },
-    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound, autoTelegram],
+    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound, autoTelegram, hasRealSignal],
   )
 
   // Auto-detect first vehicle upon opening / login from ANY browser
   useEffect(() => {
-    if (!autoDetectScan) return
+    if (!autoDetectScan || !hasRealSignal) return
     const initialTimer = setTimeout(() => {
       if (!hasTriggeredPassRef.current) {
         hasTriggeredPassRef.current = true
@@ -247,7 +259,7 @@ export function CameraLiveFeed({
 
   // Periodic webcam AI scanning if webcam is active
   useEffect(() => {
-    if (!useWebcam || !autoDetectScan) return
+    if (!useWebcam || !autoDetectScan || !hasRealSignal) return
     const webcamScanInterval = setInterval(() => {
       runAiAnalysis()
     }, 7000)
@@ -282,7 +294,7 @@ export function CameraLiveFeed({
 
   // Animation Loop for simulated CCTV concrete plant view
   useEffect(() => {
-    if (useWebcam) return
+    if (useWebcam || !hasRealSignal) return
 
     let animId: number
     let progress = 0.65 // 0 (far) to 1 (near)
@@ -767,7 +779,7 @@ export function CameraLiveFeed({
             className="bg-black/70 backdrop-blur-md border-red-500/50 text-red-400 font-mono text-xs px-2.5 py-1 flex items-center gap-1.5 animate-pulse"
           >
             <Radio className="w-3 h-3 text-red-500" />
-            LIVE RTSP
+            {hasRealSignal ? 'LIVE RTSP' : 'MẤT TÍN HIỆU'}
           </Badge>
           <Badge
             variant="outline"
@@ -786,7 +798,7 @@ export function CameraLiveFeed({
 
         {/* Bottom Status Bar in Camera Frame */}
         <div className="absolute bottom-2 left-3 flex items-center gap-2 z-10 text-[11px] font-mono text-white/90 bg-black/60 px-3 py-1 rounded backdrop-blur-sm">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span className={`w-2 h-2 rounded-full ${hasRealSignal ? 'bg-emerald-400 animate-ping' : 'bg-red-500'}`} />
           <span>Khoảng cách: {vehicleDistance}m</span>
           <span className="hidden sm:inline">|</span>
           <span className="hidden sm:inline">Tốc độ ước tính: ~16 km/h</span>
@@ -867,7 +879,7 @@ export function CameraLiveFeed({
             size="sm"
             variant="outline"
             onClick={() => runAiAnalysis()}
-            disabled={isAnalyzing}
+            disabled={!hasRealSignal || isAnalyzing}
             className="flex-1 sm:flex-initial h-9 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-medium"
           >
             <Sparkles className={`w-4 h-4 mr-1.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
@@ -923,7 +935,7 @@ export function CameraLiveFeed({
 
         {/* Simulation selector & device inputs */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-1.5 text-xs bg-muted/60 p-1 rounded-lg border border-border">
+          <div className="hidden">
             <span className="text-muted-foreground px-1 hidden md:inline">Biển số mô phỏng:</span>
             <select
               value={customPlateInput}
