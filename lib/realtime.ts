@@ -5,7 +5,7 @@ export type RealtimeSyncMessage =
   | { type: 'init'; timestamp: number }
   | {
       type: 'vehicles_updated'
-      action?: 'create' | 'update' | 'delete'
+      action?: 'create' | 'update' | 'delete' | 'clear'
       vehicle?: Vehicle
       vehicleId?: string
       timestamp: number

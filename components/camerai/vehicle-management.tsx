@@ -51,7 +51,7 @@ export function VehicleManagement({
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'restricted' | 'blacklisted'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'blacklisted'>('all')
 
   // Modal State for Add / Edit
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -63,8 +63,7 @@ export function VehicleManagement({
     driverName: '',
     vehicleType: 'Xe bồn bê tông Howo 12m³',
     company: 'Bê Tông Xanh Sài Gòn',
-    phoneNumber: '',
-    status: 'approved' as 'approved' | 'restricted' | 'blacklisted',
+    status: 'approved' as 'approved' | 'blacklisted',
     notes: '',
   })
 
@@ -129,7 +128,6 @@ export function VehicleManagement({
         driverName: '',
         vehicleType: 'Xe bồn bê tông Howo 12m³',
         company: 'Bê Tông Xanh Sài Gòn',
-        phoneNumber: '',
         status: 'approved',
         notes: initialPlate ? `Đăng ký từ camera nhận diện biển số ${initialPlate}` : '',
       })
@@ -159,7 +157,6 @@ export function VehicleManagement({
       driverName: '',
       vehicleType: 'Xe bồn bê tông Howo 12m³',
       company: 'Bê Tông Xanh Sài Gòn',
-      phoneNumber: '',
       status: 'approved',
       notes: '',
     })
@@ -175,8 +172,7 @@ export function VehicleManagement({
       driverName: v.driverName,
       vehicleType: v.vehicleType,
       company: v.company,
-      phoneNumber: v.phoneNumber || '',
-      status: v.status,
+      status: v.status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: v.notes || '',
     })
     setIsModalOpen(true)
@@ -223,11 +219,8 @@ export function VehicleManagement({
     }
   }
 
-  // Quick 1-click Status Toggle (Approved <-> Restricted <-> Blacklisted)
-  const handleQuickStatusChange = async (
-    vehicle: Vehicle,
-    newStatus: 'approved' | 'restricted' | 'blacklisted',
-  ) => {
+  // Quick 1-click Status Toggle (Approved <-> Blacklisted)
+  const handleQuickStatusChange = async (vehicle: Vehicle, newStatus: 'approved' | 'blacklisted') => {
     if (userRole !== 'admin') {
       toast.error('Chỉ tài khoản Quản trị viên (Admin) mới có quyền đổi trạng thái xe')
       return
@@ -241,8 +234,7 @@ export function VehicleManagement({
       })
 
       if (res.ok) {
-        const label =
-          newStatus === 'approved' ? 'Hợp lệ' : newStatus === 'restricted' ? 'Kiểm tra' : 'Chặn cổng'
+        const label = newStatus === 'approved' ? 'Cho qua' : 'Chặn'
         toast.success(`Đã đổi trạng thái xe ${vehicle.plateNumber} thành "${label}"`)
         setVehicles((prev) => prev.map((v) => (v.id === vehicle.id ? { ...v, status: newStatus } : v)))
         broadcastLocally({
@@ -299,7 +291,7 @@ export function VehicleManagement({
       return
     }
 
-    const headers = ['STT,Biển Số Xe,Tên Tài Xế,Loại Xe,Đơn Vị/Công Ty,Số Điện Thoại,Trạng Thái,Ghi Chú,Ngày Đăng Ký']
+    const headers = ['STT,Biển Số Xe,Tên Tài Xế,Loại Xe,Đơn Vị/Công Ty,Trạng Thái,Ghi Chú,Ngày Đăng Ký']
     const rows = vehicles.map((v, idx) =>
       [
         idx + 1,
@@ -307,8 +299,7 @@ export function VehicleManagement({
         `"${v.driverName}"`,
         `"${v.vehicleType}"`,
         `"${v.company}"`,
-        `"${v.phoneNumber || ''}"`,
-        `"${v.status === 'approved' ? 'Hợp lệ' : v.status === 'restricted' ? 'Tạm giữ' : 'Chặn'}"`,
+        `"${v.status === 'approved' ? 'Cho qua' : 'Chặn'}"`,
         `"${v.notes || ''}"`,
         `"${new Date(v.registeredAt).toLocaleDateString('vi-VN')}"`,
       ].join(','),
@@ -358,13 +349,8 @@ export function VehicleManagement({
               driverName: parts[2] || parts[1] || 'Tài xế nhập file',
               vehicleType: parts[3] || 'Xe bồn bê tông Howo',
               company: parts[4] || 'Bê Tông Xanh Sài Gòn',
-              phoneNumber: parts[5] || '',
-              status: parts[6]?.toLowerCase().includes('chặn')
-                ? 'blacklisted'
-                : parts[6]?.toLowerCase().includes('kiểm')
-                  ? 'restricted'
-                  : 'approved',
-              notes: parts[7] || 'Nhập từ file Excel',
+              status: parts[5]?.toLowerCase().includes('chặn') ? 'blacklisted' : 'approved',
+              notes: parts[6] || 'Nhập từ file Excel',
             })
           }
         }
@@ -405,11 +391,11 @@ export function VehicleManagement({
 
   // Download Sample CSV template
   const handleDownloadTemplate = () => {
-    const sample = `STT,Biển Số Xe,Tên Tài Xế,Loại Xe,Đơn Vị/Công Ty,Số Điện Thoại,Trạng Thái,Ghi Chú
-1,51N-043.57,Lê Văn Hùng,Xe bồn bê tông Howo 12m³,Bê Tông Xanh Sài Gòn,0903.112.445,Hợp lệ,Xe trạm trộn trung tâm
-2,50H-123.45,Trần Văn Mạnh,Xe bồn Hyundai HD270 10m³,Bê Tông Xanh Sài Gòn,0912.889.332,Hợp lệ,Tuyến công trình Quận 9
-3,60C-892.11,Nguyễn Quốc Tuấn,Xe tải ben Howo 4 chân,Vận tải Đông Nam Bộ,0988.441.229,Hợp lệ,Cung cấp đá dăm cát vàng
-4,29C-556.78,Đặng Đình Khoa,Xe tải thùng 8 tấn,Vãng lai chưa đăng ký,0902.999.111,Kiểm tra,Cần bảo vệ kiểm tra giấy tờ`
+    const sample = `STT,Biển Số Xe,Tên Tài Xế,Loại Xe,Đơn Vị/Công Ty,Trạng Thái,Ghi Chú
+1,51N-043.57,Lê Văn Hùng,Xe bồn bê tông Howo 12m³,Bê Tông Xanh Sài Gòn,Cho qua,Xe trạm trộn trung tâm
+2,50H-123.45,Trần Văn Mạnh,Xe bồn Hyundai HD270 10m³,Bê Tông Xanh Sài Gòn,Cho qua,Tuyến công trình Quận 9
+3,60C-892.11,Nguyễn Quốc Tuấn,Xe tải ben Howo 4 chân,Vận tải Đông Nam Bộ,Cho qua,Cung cấp đá dăm cát vàng
+4,29C-556.78,Đặng Đình Khoa,Xe tải thùng 8 tấn,Vãng lai chưa đăng ký,Chặn,Cần bảo vệ kiểm tra giấy tờ`
     const blob = new Blob(['\uFEFF' + sample], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -508,9 +494,8 @@ export function VehicleManagement({
             className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none"
           >
             <option value="all">Tất cả trạng thái ({vehicles.length})</option>
-            <option value="approved">Hợp lệ / Cho qua</option>
-            <option value="restricted">Tạm hoãn / Kiểm tra</option>
-            <option value="blacklisted">Danh sách đen / Chặn</option>
+            <option value="approved">Cho qua</option>
+            <option value="blacklisted">Chặn</option>
           </select>
 
           <Button
@@ -536,7 +521,6 @@ export function VehicleManagement({
                 <th className="px-4 py-3">Tên Tài Xế</th>
                 <th className="px-4 py-3">Loại Phương Tiện</th>
                 <th className="px-4 py-3">Đơn Vị / Công Ty</th>
-                <th className="px-4 py-3">Số Điện Thoại</th>
                 <th className="px-4 py-3">Trạng Thái Cấp Phép</th>
                 {userRole === 'admin' && <th className="px-4 py-3 text-right">Thao Tác Quản Trị</th>}
               </tr>
@@ -544,7 +528,7 @@ export function VehicleManagement({
             <tbody className="divide-y divide-border">
               {filteredVehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
                     {searchQuery ? 'Không tìm thấy xe nào khớp với từ khóa tìm kiếm' : 'Chưa có phương tiện nào trong danh mục'}
                   </td>
                 </tr>
@@ -560,9 +544,6 @@ export function VehicleManagement({
                     <td className="px-4 py-3.5 font-medium text-foreground">{vehicle.driverName}</td>
                     <td className="px-4 py-3.5 text-muted-foreground">{vehicle.vehicleType}</td>
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">{vehicle.company}</td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                      {vehicle.phoneNumber || '—'}
-                    </td>
                     <td className="px-4 py-3.5">
                       {/* Interactive quick status toggle for Admin, badge for others */}
                       {userRole === 'admin' ? (
@@ -570,26 +551,14 @@ export function VehicleManagement({
                           <button
                             type="button"
                             onClick={() => handleQuickStatusChange(vehicle, 'approved')}
-                            title="Bấm để cấp phép Hợp Lệ"
+                            title="Bấm để Cho qua"
                             className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
                               vehicle.status === 'approved'
                                 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50 shadow-xs'
                                 : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
                             }`}
                           >
-                            ✓ Hợp lệ
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickStatusChange(vehicle, 'restricted')}
-                            title="Bấm để đặt Kiểm tra"
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
-                              vehicle.status === 'restricted'
-                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-xs'
-                                : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
-                            }`}
-                          >
-                            ! Kiểm tra
+                            ✓ Cho qua
                           </button>
                           <button
                             type="button"
@@ -609,13 +578,7 @@ export function VehicleManagement({
                           {vehicle.status === 'approved' && (
                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
                               <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Hợp Lệ (Cho qua)
-                            </Badge>
-                          )}
-                          {vehicle.status === 'restricted' && (
-                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-xs">
-                              <AlertCircle className="w-3 h-3 mr-1" />
-                              Kiểm Tra
+                              Cho qua
                             </Badge>
                           )}
                           {vehicle.status === 'blacklisted' && (
@@ -678,11 +641,6 @@ export function VehicleManagement({
                         Hợp lệ
                       </Badge>
                     )}
-                    {vehicle.status === 'restricted' && (
-                      <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px]">
-                        Kiểm tra
-                      </Badge>
-                    )}
                     {vehicle.status === 'blacklisted' && (
                       <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 text-[11px]">
                         Chặn
@@ -698,11 +656,6 @@ export function VehicleManagement({
                   <div>
                     Đơn vị: <span className="text-foreground">{vehicle.company}</span>
                   </div>
-                  {vehicle.phoneNumber && (
-                    <div>
-                      SĐT: <span className="text-foreground font-mono">{vehicle.phoneNumber}</span>
-                    </div>
-                  )}
                 </div>
 
                 {userRole === 'admin' && (
@@ -815,7 +768,7 @@ export function VehicleManagement({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="company" className="text-xs font-semibold">
                   Đơn vị / Đội xe
@@ -829,18 +782,6 @@ export function VehicleManagement({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="phoneNumber" className="text-xs font-semibold">
-                  Số điện thoại
-                </Label>
-                <Input
-                  id="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  placeholder="0903.xxx.xxx"
-                  className="font-mono text-sm"
-                />
-              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -853,9 +794,8 @@ export function VehicleManagement({
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none"
               >
-                <option value="approved">Hợp lệ (Tự động mở Barie & ghi nhận)</option>
-                <option value="restricted">Kiểm tra (Báo bảo vệ kiểm tra giấy tờ)</option>
-                <option value="blacklisted">Danh sách đen (Cấm vào cổng)</option>
+                <option value="approved">Cho qua</option>
+                <option value="blacklisted">Chặn</option>
               </select>
             </div>
 

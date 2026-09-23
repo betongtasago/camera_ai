@@ -69,8 +69,7 @@ export async function dbGetVehicles(): Promise<Vehicle[] | null> {
       driverName: item.driver_name,
       vehicleType: item.vehicle_type,
       company: item.company,
-      phoneNumber: item.phone_number || undefined,
-      status: item.status || 'approved',
+      status: item.status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: item.notes || undefined,
       registeredAt: item.registered_at,
     }))
@@ -91,7 +90,6 @@ export async function dbAddVehicle(vehicle: Vehicle): Promise<boolean> {
       driver_name: vehicle.driverName,
       vehicle_type: vehicle.vehicleType,
       company: vehicle.company || 'Bê Tông Sài Gòn',
-      phone_number: vehicle.phoneNumber || null,
       status: vehicle.status || 'approved',
       notes: vehicle.notes || null,
       registered_at: vehicle.registeredAt || new Date().toISOString(),
@@ -122,7 +120,6 @@ export async function dbUpdateVehicle(vehicle: Vehicle): Promise<boolean> {
         driver_name: vehicle.driverName,
         vehicle_type: vehicle.vehicleType,
         company: vehicle.company,
-        phone_number: vehicle.phoneNumber || null,
         status: vehicle.status,
         notes: vehicle.notes || null,
       })
@@ -135,6 +132,22 @@ export async function dbUpdateVehicle(vehicle: Vehicle): Promise<boolean> {
     return true
   } catch {
     console.error('Supabase vehicle update exception occurred')
+    return false
+  }
+}
+
+export async function dbDeleteAllVehicles(): Promise<boolean> {
+  const client = getSupabaseClient()
+  if (!client) return false
+  try {
+    const { error } = await client.from('camerai_vehicles').delete().neq('id', '')
+    if (error) {
+      console.error('Failed to delete all vehicles in Supabase')
+      return false
+    }
+    return true
+  } catch {
+    console.error('Supabase delete all vehicles exception occurred')
     return false
   }
 }
@@ -504,7 +517,6 @@ CREATE TABLE IF NOT EXISTS public.camerai_vehicles (
   driver_name TEXT NOT NULL,
   vehicle_type TEXT NOT NULL,
   company TEXT NOT NULL,
-  phone_number TEXT,
   status TEXT NOT NULL DEFAULT 'approved',
   notes TEXT,
   registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

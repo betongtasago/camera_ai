@@ -1,62 +1,6 @@
 import { Vehicle, CameraConfig, DetectionResult, SupabaseConfig, TelegramConfig } from './types'
 
-export const INITIAL_VEHICLES: Vehicle[] = [
-  {
-    id: 'veh_01',
-    plateNumber: '51N-043.57',
-    driverName: 'Lê Văn Hùng',
-    vehicleType: 'Xe bồn bê tông Howo 12m³',
-    company: 'Bê Tông Xanh Sài Gòn',
-    phoneNumber: '0903.112.445',
-    status: 'approved',
-    notes: 'Xe trạm trộn trung tâm, gắn đèn LED viền cabin',
-    registeredAt: '2026-01-15T08:00:00Z',
-  },
-  {
-    id: 'veh_02',
-    plateNumber: '50H-123.45',
-    driverName: 'Trần Văn Mạnh',
-    vehicleType: 'Xe bồn Hyundai HD270 10m³',
-    company: 'Bê Tông Xanh Sài Gòn',
-    phoneNumber: '0912.889.332',
-    status: 'approved',
-    notes: 'Phục vụ tuyến công trình Quận 9 & Thủ Đức',
-    registeredAt: '2026-02-10T09:30:00Z',
-  },
-  {
-    id: 'veh_03',
-    plateNumber: '60C-892.11',
-    driverName: 'Nguyễn Quốc Tuấn',
-    vehicleType: 'Xe tải ben Howo 4 chân chở đá mi',
-    company: 'Vận tải Đông Nam Bộ',
-    phoneNumber: '0988.441.229',
-    status: 'approved',
-    notes: 'Nhà cung cấp cốt liệu đá dăm & cát vàng',
-    registeredAt: '2026-02-18T14:15:00Z',
-  },
-  {
-    id: 'veh_04',
-    plateNumber: '51D-998.12',
-    driverName: 'Phạm Hoàng Nam',
-    vehicleType: 'Xe bán tải Ford Ranger kỹ thuật',
-    company: 'Ban Quản Lý Kỹ Thuật',
-    phoneNumber: '0937.221.990',
-    status: 'approved',
-    notes: 'Xe kiểm định mác bê tông & thí nghiệm nén mẫu',
-    registeredAt: '2026-03-01T07:45:00Z',
-  },
-  {
-    id: 'veh_05',
-    plateNumber: '29C-556.78',
-    driverName: 'Đặng Đình Khoa',
-    vehicleType: 'Xe tải thùng 8 tấn',
-    company: 'Vãng lai chưa đăng ký',
-    phoneNumber: '0902.999.111',
-    status: 'restricted',
-    notes: 'Cần bảo vệ kiểm tra giấy tờ trước khi cho vào trạm',
-    registeredAt: '2026-03-10T11:00:00Z',
-  },
-]
+export const INITIAL_VEHICLES: Vehicle[] = []
 
 export const INITIAL_CAMERAS: CameraConfig[] = [
   {

@@ -14,8 +14,7 @@ export interface Vehicle {
   driverName: string // e.g. "Lê Văn Hùng"
   vehicleType: string // e.g. "Xe bồn bê tông Howo 12m³"
   company: string // e.g. "Bê Tông Xanh Sài Gòn"
-  phoneNumber?: string
-  status: 'approved' | 'restricted' | 'blacklisted'
+  status: 'approved' | 'blacklisted'
   notes?: string
   registeredAt: string
 }

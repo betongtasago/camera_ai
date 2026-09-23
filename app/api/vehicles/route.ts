@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getGlobalVehicles,
+  setGlobalVehicles,
   addGlobalVehicle,
   updateGlobalVehicle,
   deleteGlobalVehicle,
 } from '@/lib/storage'
 import { Vehicle } from '@/lib/types'
-import { dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
+import { dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle, dbDeleteAllVehicles } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 
 export async function GET(req: NextRequest) {
@@ -42,7 +43,6 @@ export async function POST(req: NextRequest) {
 
     // Support batch import (e.g. from CSV / Excel)
     if (Array.isArray(body.vehicles)) {
-      const currentList = getGlobalVehicles()
       const imported: Vehicle[] = []
 
       for (const item of body.vehicles) {
@@ -55,8 +55,7 @@ export async function POST(req: NextRequest) {
           driverName: item.driverName?.trim() || 'Tài xế theo xe',
           vehicleType: item.vehicleType?.trim() || 'Xe bồn bê tông',
           company: item.company?.trim() || 'Bê Tông Xanh Sài Gòn',
-          phoneNumber: item.phoneNumber?.trim() || '',
-          status: item.status || 'approved',
+          status: item.status === 'blacklisted' ? 'blacklisted' : 'approved',
           notes: item.notes?.trim() || 'Nhập từ file Excel',
           registeredAt: item.registeredAt || new Date().toISOString(),
         }
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const { plateNumber, driverName, vehicleType, company, phoneNumber, status, notes } = body
+    const { plateNumber, driverName, vehicleType, company, status, notes } = body
 
     if (!plateNumber || !driverName || !vehicleType) {
       return NextResponse.json({ error: 'Vui lòng điền đầy đủ: Biển số xe, Tên tài xế, và Loại xe' }, { status: 400 })
@@ -108,8 +107,7 @@ export async function POST(req: NextRequest) {
       driverName: driverName.trim(),
       vehicleType: vehicleType.trim(),
       company: company?.trim() || 'Bê Tông Xanh Sài Gòn',
-      phoneNumber: phoneNumber?.trim() || '',
-      status: status || 'approved',
+      status: status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: notes?.trim() || '',
       registeredAt: new Date().toISOString(),
     }
@@ -140,7 +138,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { id, plateNumber, driverName, vehicleType, company, phoneNumber, status, notes } = body
+    const { id, plateNumber, driverName, vehicleType, company, status, notes } = body
 
     if (!id && !plateNumber) {
       return NextResponse.json({ error: 'Thiếu mã định danh xe hoặc biển số' }, { status: 400 })
@@ -160,8 +158,7 @@ export async function PUT(req: NextRequest) {
       driverName: driverName !== undefined ? driverName.trim() : existing?.driverName || '',
       vehicleType: vehicleType !== undefined ? vehicleType.trim() : existing?.vehicleType || '',
       company: company !== undefined ? company.trim() : existing?.company || '',
-      phoneNumber: phoneNumber !== undefined ? phoneNumber.trim() : existing?.phoneNumber || '',
-      status: status || existing?.status || 'approved',
+      status: status === 'blacklisted' ? 'blacklisted' : existing?.status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: notes !== undefined ? notes.trim() : existing?.notes || '',
       registeredAt: existing?.registeredAt || new Date().toISOString(),
     }
@@ -193,6 +190,19 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+
+    if (searchParams.get('all') === 'true') {
+      const ok = await dbDeleteAllVehicles()
+      setGlobalVehicles([])
+      broadcastRealtime({ type: 'vehicles_updated', action: 'clear', timestamp: Date.now() })
+      return NextResponse.json({
+        success: true,
+        supabaseDeleted: ok,
+        message: ok
+          ? 'Đã xóa toàn bộ danh mục xe khỏi app và Supabase'
+          : 'Đã xóa danh mục xe trong app; Supabase chưa được cấu hình nên chưa thể xóa dữ liệu từ xa',
+      })
+    }
 
     if (!id) {
       return NextResponse.json({ error: 'Thiếu ID xe cần xóa' }, { status: 400 })
