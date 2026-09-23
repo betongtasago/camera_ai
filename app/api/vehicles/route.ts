@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { INITIAL_VEHICLES } from '@/lib/storage'
+import {
+  getGlobalVehicles,
+  setGlobalVehicles,
+  addGlobalVehicle,
+  updateGlobalVehicle,
+  deleteGlobalVehicle,
+} from '@/lib/storage'
 import { Vehicle } from '@/lib/types'
 import { dbGetVehicles, dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
-
-// In-memory cache for fallback
-let fleetStorage: Vehicle[] = [...INITIAL_VEHICLES]
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q')?.toLowerCase() || ''
   const status = searchParams.get('status')
 
-  // Load from Supabase (or fallback)
+  // Load from Supabase (or fallback to global memory)
   let results: Vehicle[] = []
   try {
     results = await dbGetVehicles()
     if (results.length > 0) {
-      fleetStorage = results
+      setGlobalVehicles(results)
     } else {
-      results = [...fleetStorage]
+      results = getGlobalVehicles()
     }
   } catch {
     console.error('Error retrieving vehicles from database')
-    results = [...fleetStorage]
+    results = getGlobalVehicles()
   }
 
   if (query) {
@@ -46,6 +49,50 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+
+    // Support batch import (e.g. from CSV / Excel)
+    if (Array.isArray(body.vehicles)) {
+      const currentList = getGlobalVehicles()
+      const imported: Vehicle[] = []
+
+      for (const item of body.vehicles) {
+        if (!item.plateNumber) continue
+        const cleanPlate = item.plateNumber.trim().toUpperCase()
+
+        const newV: Vehicle = {
+          id: item.id || 'veh_' + Math.random().toString(36).substring(2, 9),
+          plateNumber: cleanPlate,
+          driverName: item.driverName?.trim() || 'Tài xế theo xe',
+          vehicleType: item.vehicleType?.trim() || 'Xe bồn bê tông',
+          company: item.company?.trim() || 'Bê Tông Xanh Sài Gòn',
+          phoneNumber: item.phoneNumber?.trim() || '',
+          status: item.status || 'approved',
+          notes: item.notes?.trim() || 'Nhập từ file Excel',
+          registeredAt: item.registeredAt || new Date().toISOString(),
+        }
+
+        addGlobalVehicle(newV)
+        imported.push(newV)
+        try {
+          await dbAddVehicle(newV)
+        } catch {
+          // Ignore individual db error during batch
+        }
+      }
+
+      broadcastRealtime({
+        type: 'vehicles_updated',
+        action: 'create',
+        timestamp: Date.now(),
+      })
+
+      return NextResponse.json({
+        success: true,
+        count: imported.length,
+        vehicles: getGlobalVehicles(),
+      })
+    }
+
     const { plateNumber, driverName, vehicleType, company, phoneNumber, status, notes } = body
 
     if (!plateNumber || !driverName || !vehicleType) {
@@ -54,10 +101,12 @@ export async function POST(req: NextRequest) {
 
     // Standardize plate number (e.g., 51N-043.57)
     const normalizedPlate = plateNumber.trim().toUpperCase()
+    const cleanPlateNumber = normalizedPlate.replace(/[^A-Z0-9]/g, '')
 
-    // Check duplicate
-    const existing = fleetStorage.find(
-      (v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === normalizedPlate.replace(/[^A-Z0-9]/g, ''),
+    // Check duplicate in current memory
+    const currentList = getGlobalVehicles()
+    const existing = currentList.find(
+      (v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlateNumber,
     )
     if (existing) {
       return NextResponse.json({ error: `Biển số xe ${normalizedPlate} đã tồn tại trong danh mục!` }, { status: 409 })
@@ -75,9 +124,13 @@ export async function POST(req: NextRequest) {
       registeredAt: new Date().toISOString(),
     }
 
-    // Persist to Supabase and update local cache
-    await dbAddVehicle(newVehicle)
-    fleetStorage.unshift(newVehicle)
+    // Persist to Supabase and update global cache
+    try {
+      await dbAddVehicle(newVehicle)
+    } catch {
+      // Supabase optional
+    }
+    addGlobalVehicle(newVehicle)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -99,29 +152,37 @@ export async function PUT(req: NextRequest) {
     const body = await req.json()
     const { id, plateNumber, driverName, vehicleType, company, phoneNumber, status, notes } = body
 
-    if (!id) {
-      return NextResponse.json({ error: 'Thiếu mã định danh xe (ID)' }, { status: 400 })
+    if (!id && !plateNumber) {
+      return NextResponse.json({ error: 'Thiếu mã định danh xe hoặc biển số' }, { status: 400 })
     }
 
-    const index = fleetStorage.findIndex((v) => v.id === id)
-    if (index === -1) {
-      return NextResponse.json({ error: 'Không tìm thấy xe trong danh mục' }, { status: 404 })
-    }
+    const currentList = getGlobalVehicles()
+    const targetId = id || ''
+    const cleanPlate = plateNumber ? plateNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+
+    const existing = currentList.find(
+      (v) => v.id === targetId || (cleanPlate && v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlate),
+    )
 
     const updatedVehicle: Vehicle = {
-      ...fleetStorage[index],
-      plateNumber: plateNumber ? plateNumber.trim().toUpperCase() : fleetStorage[index].plateNumber,
-      driverName: driverName ? driverName.trim() : fleetStorage[index].driverName,
-      vehicleType: vehicleType ? vehicleType.trim() : fleetStorage[index].vehicleType,
-      company: company ? company.trim() : fleetStorage[index].company,
-      phoneNumber: phoneNumber !== undefined ? phoneNumber.trim() : fleetStorage[index].phoneNumber,
-      status: status || fleetStorage[index].status,
-      notes: notes !== undefined ? notes.trim() : fleetStorage[index].notes,
+      id: existing?.id || targetId || 'veh_' + Math.random().toString(36).substring(2, 9),
+      plateNumber: plateNumber ? plateNumber.trim().toUpperCase() : existing?.plateNumber || '',
+      driverName: driverName !== undefined ? driverName.trim() : existing?.driverName || '',
+      vehicleType: vehicleType !== undefined ? vehicleType.trim() : existing?.vehicleType || '',
+      company: company !== undefined ? company.trim() : existing?.company || '',
+      phoneNumber: phoneNumber !== undefined ? phoneNumber.trim() : existing?.phoneNumber || '',
+      status: status || existing?.status || 'approved',
+      notes: notes !== undefined ? notes.trim() : existing?.notes || '',
+      registeredAt: existing?.registeredAt || new Date().toISOString(),
     }
 
-    // Update in Supabase and cache
-    await dbUpdateVehicle(updatedVehicle)
-    fleetStorage[index] = updatedVehicle
+    // Update in Supabase and global cache
+    try {
+      await dbUpdateVehicle(updatedVehicle)
+    } catch {
+      // Supabase optional
+    }
+    updateGlobalVehicle(updatedVehicle)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -131,7 +192,7 @@ export async function PUT(req: NextRequest) {
       timestamp: Date.now(),
     })
 
-    return NextResponse.json({ success: true, vehicle: fleetStorage[index] })
+    return NextResponse.json({ success: true, vehicle: updatedVehicle })
   } catch {
     console.error('Error updating vehicle')
     return NextResponse.json({ error: 'Không thể cập nhật thông tin xe' }, { status: 500 })
@@ -147,9 +208,13 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Thiếu ID xe cần xóa' }, { status: 400 })
     }
 
-    // Delete in Supabase and cache
-    await dbDeleteVehicle(id)
-    fleetStorage = fleetStorage.filter((v) => v.id !== id)
+    // Delete in Supabase and global cache
+    try {
+      await dbDeleteVehicle(id)
+    } catch {
+      // Supabase optional
+    }
+    deleteGlobalVehicle(id)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({

@@ -22,6 +22,7 @@ export type RealtimeSyncMessage =
     }
   | {
       type: 'logs_updated'
+      logId?: string
       timestamp: number
     }
   | {

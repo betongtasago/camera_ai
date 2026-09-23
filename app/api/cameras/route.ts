@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { INITIAL_CAMERAS } from '@/lib/storage'
+import {
+  getGlobalCameras,
+  setGlobalCameras,
+  addGlobalCamera,
+  updateGlobalCamera,
+  deleteGlobalCamera,
+} from '@/lib/storage'
 import { CameraConfig } from '@/lib/types'
 import { dbGetCameras, dbAddCamera, dbUpdateCamera } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
-
-let camerasStorage: CameraConfig[] = [...INITIAL_CAMERAS]
 
 export async function GET() {
   try {
     const list = await dbGetCameras()
     if (list.length > 0) {
-      camerasStorage = list
+      setGlobalCameras(list)
+      return NextResponse.json({ cameras: list })
     }
-    return NextResponse.json({ cameras: camerasStorage })
+    return NextResponse.json({ cameras: getGlobalCameras() })
   } catch {
     console.error('Error fetching cameras from database')
-    return NextResponse.json({ cameras: camerasStorage })
+    return NextResponse.json({ cameras: getGlobalCameras() })
   }
 }
 
@@ -29,12 +34,12 @@ export async function POST(req: NextRequest) {
     }
 
     const newCamera: CameraConfig = {
-      id: 'cam_' + Math.random().toString(36).substring(2, 8),
+      id: body.id || 'cam_' + Math.random().toString(36).substring(2, 8),
       name: name.trim(),
-      location: location?.trim() || 'Khu vực giám sát',
+      location: location?.trim() || 'CAN - KHU SUA CHUA',
       streamType: streamType || 'simulation',
-      streamUrl: streamUrl?.trim(),
-      ipAddress: ipAddress?.trim() || '192.168.1.100',
+      streamUrl: streamUrl?.trim() || '',
+      ipAddress: ipAddress?.trim() || '192.168.1.108',
       port: port ? Number(port) : 554,
       username: username?.trim() || 'admin',
       password: password ? '••••••••' : undefined,
@@ -45,9 +50,13 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     }
 
-    // Persist to Supabase
-    await dbAddCamera(newCamera)
-    camerasStorage.push(newCamera)
+    // Persist to Supabase and update global cache
+    try {
+      await dbAddCamera(newCamera)
+    } catch {
+      // Supabase optional
+    }
+    addGlobalCamera(newCamera)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -80,29 +89,36 @@ export async function PUT(req: NextRequest) {
       autoZoomPlate,
     } = body
 
-    const index = camerasStorage.findIndex((c) => c.id === id)
-    if (index === -1) {
-      return NextResponse.json({ error: 'Không tìm thấy camera' }, { status: 404 })
+    if (!id) {
+      return NextResponse.json({ error: 'Thiếu mã camera (ID)' }, { status: 400 })
     }
+
+    const currentList = getGlobalCameras()
+    const existing = currentList.find((c) => c.id === id)
 
     const updatedCamera: CameraConfig = {
-      ...camerasStorage[index],
-      name: name ? name.trim() : camerasStorage[index].name,
-      location: location ? location.trim() : camerasStorage[index].location,
-      streamType: streamType || camerasStorage[index].streamType,
-      streamUrl: streamUrl !== undefined ? streamUrl.trim() : camerasStorage[index].streamUrl,
-      ipAddress: ipAddress !== undefined ? ipAddress.trim() : camerasStorage[index].ipAddress,
-      port: port ? Number(port) : camerasStorage[index].port,
-      username: username !== undefined ? username.trim() : camerasStorage[index].username,
-      isOnline: isOnline !== undefined ? isOnline : camerasStorage[index].isOnline,
+      id,
+      name: name ? name.trim() : existing?.name || 'Camera IP',
+      location: location ? location.trim() : existing?.location || 'CAN - KHU SUA CHUA',
+      streamType: streamType || existing?.streamType || 'rtsp',
+      streamUrl: streamUrl !== undefined ? streamUrl.trim() : existing?.streamUrl || '',
+      ipAddress: ipAddress !== undefined ? ipAddress.trim() : existing?.ipAddress || '192.168.1.108',
+      port: port ? Number(port) : existing?.port || 554,
+      username: username !== undefined ? username.trim() : existing?.username || 'admin',
+      isOnline: isOnline !== undefined ? isOnline : existing?.isOnline !== false,
       aiDetectionEnabled:
-        aiDetectionEnabled !== undefined ? aiDetectionEnabled : camerasStorage[index].aiDetectionEnabled,
-      autoZoomPlate: autoZoomPlate !== undefined ? autoZoomPlate : camerasStorage[index].autoZoomPlate,
+        aiDetectionEnabled !== undefined ? aiDetectionEnabled : existing?.aiDetectionEnabled !== false,
+      autoZoomPlate: autoZoomPlate !== undefined ? autoZoomPlate : existing?.autoZoomPlate !== false,
+      createdAt: existing?.createdAt || new Date().toISOString(),
     }
 
-    // Update in Supabase
-    await dbUpdateCamera(updatedCamera)
-    camerasStorage[index] = updatedCamera
+    // Update in Supabase and global cache
+    try {
+      await dbUpdateCamera(updatedCamera)
+    } catch {
+      // Supabase optional
+    }
+    updateGlobalCamera(updatedCamera)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -111,9 +127,33 @@ export async function PUT(req: NextRequest) {
       timestamp: Date.now(),
     })
 
-    return NextResponse.json({ success: true, camera: camerasStorage[index] })
+    return NextResponse.json({ success: true, camera: updatedCamera })
   } catch {
     console.error('Error updating camera')
     return NextResponse.json({ error: 'Lỗi khi cập nhật camera' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Thiếu ID camera cần xóa' }, { status: 400 })
+    }
+
+    deleteGlobalCamera(id)
+
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'cameras_updated',
+      timestamp: Date.now(),
+    })
+
+    return NextResponse.json({ success: true, message: 'Đã xóa camera thành công' })
+  } catch {
+    console.error('Error deleting camera')
+    return NextResponse.json({ error: 'Lỗi khi xóa camera' }, { status: 500 })
   }
 }

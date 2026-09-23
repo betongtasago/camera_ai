@@ -164,21 +164,142 @@ export const INITIAL_TELEGRAM: TelegramConfig = {
   notifyOnAllVehicles: true,
 }
 
-// In-memory singleton for Telegram config across API routes
-let currentTelegramConfig: TelegramConfig = { ...INITIAL_TELEGRAM }
+// In-memory singletons across API routes (Node process memory)
+declare global {
+  var __cameraiVehicles: Vehicle[] | undefined
+  var __cameraiCameras: CameraConfig[] | undefined
+  var __cameraiLogs: DetectionResult[] | undefined
+  var __cameraiTelegram: TelegramConfig | undefined
+}
 
-export function getGlobalTelegramConfig(): TelegramConfig {
-  return {
-    ...currentTelegramConfig,
-    botToken: currentTelegramConfig.botToken || process.env.TELEGRAM_BOT_TOKEN || '',
-    chatId: currentTelegramConfig.chatId || process.env.TELEGRAM_CHAT_ID || '',
+// Global Vehicles Store
+export function getGlobalVehicles(): Vehicle[] {
+  if (!globalThis.__cameraiVehicles) {
+    globalThis.__cameraiVehicles = [...INITIAL_VEHICLES]
   }
+  return globalThis.__cameraiVehicles
+}
+
+export function setGlobalVehicles(vehicles: Vehicle[]): Vehicle[] {
+  globalThis.__cameraiVehicles = [...vehicles]
+  return globalThis.__cameraiVehicles
+}
+
+export function addGlobalVehicle(vehicle: Vehicle): Vehicle {
+  const current = getGlobalVehicles()
+  // Add to top
+  globalThis.__cameraiVehicles = [vehicle, ...current.filter((v) => v.id !== vehicle.id)]
+  return vehicle
+}
+
+export function updateGlobalVehicle(vehicle: Vehicle): Vehicle | null {
+  const current = getGlobalVehicles()
+  const idx = current.findIndex((v) => v.id === vehicle.id)
+  if (idx !== -1) {
+    current[idx] = { ...current[idx], ...vehicle }
+    globalThis.__cameraiVehicles = [...current]
+    return current[idx]
+  }
+  // If not found by ID, also check by plate number
+  const cleanPlate = vehicle.plateNumber.replace(/[^A-Z0-9]/g, '')
+  const plateIdx = current.findIndex((v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlate)
+  if (plateIdx !== -1) {
+    current[plateIdx] = { ...current[plateIdx], ...vehicle }
+    globalThis.__cameraiVehicles = [...current]
+    return current[plateIdx]
+  }
+  // Otherwise push as new
+  globalThis.__cameraiVehicles = [vehicle, ...current]
+  return vehicle
+}
+
+export function deleteGlobalVehicle(id: string): boolean {
+  const current = getGlobalVehicles()
+  const initialLen = current.length
+  globalThis.__cameraiVehicles = current.filter((v) => v.id !== id && v.plateNumber !== id)
+  return globalThis.__cameraiVehicles.length < initialLen
+}
+
+// Global Cameras Store
+export function getGlobalCameras(): CameraConfig[] {
+  if (!globalThis.__cameraiCameras) {
+    globalThis.__cameraiCameras = [...INITIAL_CAMERAS]
+  }
+  return globalThis.__cameraiCameras
+}
+
+export function setGlobalCameras(cameras: CameraConfig[]): CameraConfig[] {
+  globalThis.__cameraiCameras = [...cameras]
+  return globalThis.__cameraiCameras
+}
+
+export function addGlobalCamera(camera: CameraConfig): CameraConfig {
+  const current = getGlobalCameras()
+  globalThis.__cameraiCameras = [...current, camera]
+  return camera
+}
+
+export function updateGlobalCamera(camera: CameraConfig): CameraConfig | null {
+  const current = getGlobalCameras()
+  const idx = current.findIndex((c) => c.id === camera.id)
+  if (idx !== -1) {
+    current[idx] = { ...current[idx], ...camera }
+    globalThis.__cameraiCameras = [...current]
+    return current[idx]
+  }
+  globalThis.__cameraiCameras = [...current, camera]
+  return camera
+}
+
+export function deleteGlobalCamera(id: string): boolean {
+  const current = getGlobalCameras()
+  const initialLen = current.length
+  globalThis.__cameraiCameras = current.filter((c) => c.id !== id)
+  return globalThis.__cameraiCameras.length < initialLen
+}
+
+// Global Detection Logs Store
+export function getGlobalLogs(): DetectionResult[] {
+  if (!globalThis.__cameraiLogs) {
+    globalThis.__cameraiLogs = [...INITIAL_EVENTS]
+  }
+  return globalThis.__cameraiLogs
+}
+
+export function addGlobalLog(log: DetectionResult): DetectionResult {
+  const current = getGlobalLogs()
+  globalThis.__cameraiLogs = [log, ...current.slice(0, 99)]
+  return log
+}
+
+export function deleteGlobalLog(id: string): boolean {
+  const current = getGlobalLogs()
+  const initialLen = current.length
+  globalThis.__cameraiLogs = current.filter((l) => l.id !== id)
+  return globalThis.__cameraiLogs.length < initialLen
+}
+
+export function clearGlobalLogs(): void {
+  globalThis.__cameraiLogs = []
+}
+
+// In-memory singleton for Telegram config across API routes
+export function getGlobalTelegramConfig(): TelegramConfig {
+  if (!globalThis.__cameraiTelegram) {
+    globalThis.__cameraiTelegram = {
+      ...INITIAL_TELEGRAM,
+      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+      chatId: process.env.TELEGRAM_CHAT_ID || '',
+    }
+  }
+  return globalThis.__cameraiTelegram
 }
 
 export function setGlobalTelegramConfig(newConfig: Partial<TelegramConfig>): TelegramConfig {
-  currentTelegramConfig = {
-    ...currentTelegramConfig,
+  const current = getGlobalTelegramConfig()
+  globalThis.__cameraiTelegram = {
+    ...current,
     ...newConfig,
   }
-  return currentTelegramConfig
+  return globalThis.__cameraiTelegram
 }

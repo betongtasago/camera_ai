@@ -59,6 +59,10 @@ export default function HomePage() {
   const [todayStats, setTodayStats] = useState({ total: 48, passed: 45, warnings: 3 })
   const [isMounted, setIsMounted] = useState(false)
 
+  // Fleet pre-fill navigation state
+  const [prefillPlate, setPrefillPlate] = useState<string>('')
+  const [autoOpenVehicleModal, setAutoOpenVehicleModal] = useState<boolean>(false)
+
   // Fetch cameras from server/Supabase
   const fetchCameras = useCallback(async () => {
     try {
@@ -511,8 +515,13 @@ export default function HomePage() {
                     {!latestDetection.isMatch && (
                       <Button
                         variant="outline"
-                        onClick={() => setActiveTab('vehicles')}
-                        className="w-full h-9 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                        onClick={() => {
+                          setPrefillPlate(latestDetection.plateNumber)
+                          setAutoOpenVehicleModal(true)
+                          setActiveTab('vehicles')
+                          toast.info(`Chuyển sang trang Thêm xe cho biển số: ${latestDetection.plateNumber}`)
+                        }}
+                        className="w-full h-9 text-xs text-primary border-primary/30 hover:bg-primary/10 font-semibold"
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
                         Đăng Ký Biển Số Này Vào Danh Mục
@@ -550,7 +559,13 @@ export default function HomePage() {
         {activeTab === 'vehicles' && (
           <VehicleManagement
             userRole={currentUser?.role}
-            onFleetUpdated={() => toast.success('Danh mục xe đã được đồng bộ')}
+            initialPlate={prefillPlate}
+            autoOpenCreate={autoOpenVehicleModal}
+            onFleetUpdated={() => {
+              // reset prefill after consumed
+              setPrefillPlate('')
+              setAutoOpenVehicleModal(false)
+            }}
           />
         )}
 
@@ -558,11 +573,15 @@ export default function HomePage() {
         {activeTab === 'logs' && (
           <DetectionLogs
             logs={detectionLogs}
+            userRole={currentUser?.role}
             onRefresh={async () => {
               await fetchDetectionLogs()
-              toast.info('Đã cập nhật nhật ký mới nhất từ Supabase')
+              toast.info('Đã tải lại nhật ký mới nhất')
             }}
-            onAddVehiclePrompt={(plate, type) => {
+            onLogsChanged={fetchDetectionLogs}
+            onAddVehiclePrompt={(plate) => {
+              setPrefillPlate(plate)
+              setAutoOpenVehicleModal(true)
               setActiveTab('vehicles')
               toast.info(`Chuyển sang trang Thêm xe cho biển số: ${plate}`)
             }}
@@ -573,8 +592,23 @@ export default function HomePage() {
         {activeTab === 'settings' && (
           <CameraSettingsModal
             currentCamera={currentCamera}
+            cameras={cameras}
+            onSelectCamera={(cam) => setSelectedCameraId(cam.id)}
             onCameraUpdated={(cam) => {
               setCameras((prev) => prev.map((c) => (c.id === cam.id ? cam : c)))
+            }}
+            onCameraAdded={(newCam) => {
+              setCameras((prev) => [...prev, newCam])
+              setSelectedCameraId(newCam.id)
+            }}
+            onCameraDeleted={(id) => {
+              setCameras((prev) => {
+                const updated = prev.filter((c) => c.id !== id)
+                if (selectedCameraId === id && updated.length > 0) {
+                  setSelectedCameraId(updated[0].id)
+                }
+                return updated
+              })
             }}
           />
         )}

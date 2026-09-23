@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   ClipboardList,
   CheckCircle2,
@@ -8,25 +8,43 @@ import {
   Download,
   Trash2,
   RefreshCw,
-  Eye,
   Send,
-  Calendar,
   Clock,
-  Car,
+  Plus,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { DetectionResult } from '@/lib/types'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { DetectionResult, UserRole } from '@/lib/types'
 import { toast } from 'sonner'
 
 interface DetectionLogsProps {
   logs: DetectionResult[]
+  userRole?: UserRole
   onRefresh?: () => void
   onAddVehiclePrompt?: (plateNumber: string, vehicleType: string) => void
+  onLogsChanged?: () => void
 }
 
-export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: DetectionLogsProps) {
+export function DetectionLogs({
+  logs = [],
+  userRole = 'admin',
+  onRefresh,
+  onAddVehiclePrompt,
+  onLogsChanged,
+}: DetectionLogsProps) {
   const [filter, setFilter] = useState<'all' | 'passed' | 'warning'>('all')
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [logToDelete, setLogToDelete] = useState<DetectionResult | null>(null)
 
   const filteredLogs = logs.filter((log) => {
     if (filter === 'all') return true
@@ -50,6 +68,44 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
       }
     } catch {
       toast.error('Không thể kết nối đến dịch vụ Telegram')
+    }
+  }
+
+  const handleDeleteSingleLog = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/events?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Đã xóa bản ghi nhật ký')
+        setLogToDelete(null)
+        onLogsChanged?.()
+        onRefresh?.()
+      } else {
+        toast.error('Không thể xóa bản ghi')
+      }
+    } catch {
+      toast.error('Lỗi khi xóa bản ghi')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleClearAllLogs = async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch('/api/events', { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Đã dọn sạch toàn bộ nhật ký nhận diện xe')
+        setIsClearModalOpen(false)
+        onLogsChanged?.()
+        onRefresh?.()
+      } else {
+        toast.error('Không thể xóa toàn bộ nhật ký')
+      }
+    } catch {
+      toast.error('Lỗi khi xóa nhật ký')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -96,12 +152,14 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border text-xs">
             <button
               onClick={() => setFilter('all')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'all' ? 'bg-background shadow-xs font-semibold text-foreground' : 'text-muted-foreground'
+                filter === 'all'
+                  ? 'bg-background shadow-xs font-semibold text-foreground'
+                  : 'text-muted-foreground'
               }`}
             >
               Tất cả ({logs.length})
@@ -109,7 +167,9 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
             <button
               onClick={() => setFilter('passed')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'passed' ? 'bg-background shadow-xs font-semibold text-emerald-500' : 'text-muted-foreground'
+                filter === 'passed'
+                  ? 'bg-background shadow-xs font-semibold text-emerald-500'
+                  : 'text-muted-foreground'
               }`}
             >
               Hợp lệ
@@ -117,7 +177,9 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
             <button
               onClick={() => setFilter('warning')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'warning' ? 'bg-background shadow-xs font-semibold text-amber-500' : 'text-muted-foreground'
+                filter === 'warning'
+                  ? 'bg-background shadow-xs font-semibold text-amber-500'
+                  : 'text-muted-foreground'
               }`}
             >
               Xe lạ
@@ -129,8 +191,27 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
             Xuất file
           </Button>
 
+          {userRole === 'admin' && logs.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsClearModalOpen(true)}
+              className="text-xs h-9 text-destructive border-destructive/30 hover:bg-destructive/10"
+              title="Xóa toàn bộ nhật ký"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Xóa hết
+            </Button>
+          )}
+
           {onRefresh && (
-            <Button variant="ghost" size="icon" onClick={onRefresh} className="h-9 w-9">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              className="h-9 w-9"
+              title="Tải lại nhật ký"
+            >
               <RefreshCw className="w-4 h-4" />
             </Button>
           )}
@@ -151,14 +232,14 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                 <th className="px-4 py-3">Phương Tiện</th>
                 <th className="px-4 py-3">Độ Tin Cậy AI</th>
                 <th className="px-4 py-3">Đối Soát Danh Mục</th>
-                <th className="px-4 py-3 text-right">Xử Lý</th>
+                <th className="px-4 py-3 text-right">Xử Lý & Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                    Chưa có lượt xe nào được ghi nhận trong phiên này
+                    Chưa có lượt xe nào được ghi nhận trong danh sách này
                   </td>
                 </tr>
               ) : (
@@ -190,7 +271,9 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       {log.matchedVehicle?.vehicleType || log.vehicleType}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">{log.confidence}%</td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">
+                      {log.confidence}%
+                    </td>
                     <td className="px-4 py-3.5">
                       {log.isMatch ? (
                         <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
@@ -215,14 +298,27 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                           <Send className="w-3.5 h-3.5 mr-1" />
                           Báo Telegram
                         </Button>
-                        {!log.isMatch && onAddVehiclePrompt && (
+                        {!log.isMatch && onAddVehiclePrompt && userRole === 'admin' && (
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="secondary"
                             onClick={() => onAddVehiclePrompt(log.plateNumber, log.vehicleType)}
-                            className="text-xs h-8 px-2 text-primary hover:text-primary"
+                            className="text-xs h-8 px-2 bg-primary/10 text-primary hover:bg-primary/20 font-semibold"
+                            title="Thêm biển số này vào danh mục xe được phép"
                           >
-                            + Thêm xe
+                            <Plus className="w-3.5 h-3.5 mr-0.5" />
+                            Đăng ký xe
+                          </Button>
+                        )}
+                        {userRole === 'admin' && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setLogToDelete(log)}
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title="Xóa bản ghi này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         )}
                       </div>
@@ -277,24 +373,37 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/50">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSendTelegram(log)}
-                    className="h-8 text-xs px-3 border-sky-500/40 text-sky-600 dark:text-sky-400"
-                  >
-                    <Send className="w-3.5 h-3.5 mr-1" />
-                    Báo Telegram
-                  </Button>
-                  {!log.isMatch && onAddVehiclePrompt && (
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                  <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => onAddVehiclePrompt(log.plateNumber, log.vehicleType)}
-                      className="h-8 text-xs px-2 text-primary"
+                      variant="outline"
+                      onClick={() => handleSendTelegram(log)}
+                      className="h-8 text-xs px-2.5 border-sky-500/40 text-sky-600 dark:text-sky-400"
                     >
-                      + Thêm xe
+                      <Send className="w-3.5 h-3.5 mr-1" />
+                      Telegram
+                    </Button>
+                    {!log.isMatch && onAddVehiclePrompt && userRole === 'admin' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onAddVehiclePrompt(log.plateNumber, log.vehicleType)}
+                        className="h-8 text-xs px-2 bg-primary/10 text-primary font-medium"
+                      >
+                        + Đăng ký
+                      </Button>
+                    )}
+                  </div>
+                  {userRole === 'admin' && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setLogToDelete(log)}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      title="Xóa dòng"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   )}
                 </div>
@@ -303,6 +412,59 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
           )}
         </div>
       </div>
+
+      {/* Dialog: Delete single log confirmation */}
+      <Dialog open={Boolean(logToDelete)} onOpenChange={(open) => !open && setLogToDelete(null)}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Xóa Bản Ghi Nhật Ký
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Bạn có chắc muốn xóa bản ghi xe biển số{' '}
+              <strong className="text-foreground">{logToDelete?.plateNumber}</strong> khỏi nhật ký?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setLogToDelete(null)} disabled={isDeleting}>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => logToDelete && handleDeleteSingleLog(logToDelete.id)}
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+              Xóa bản ghi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Clear all logs confirmation */}
+      <Dialog open={isClearModalOpen} onOpenChange={setIsClearModalOpen}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Xác Nhận Xóa Toàn Bộ Nhật Ký
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Tất cả các bản ghi đối soát nhận diện biển số xe hiện tại sẽ bị xóa sạch khỏi bộ nhớ hệ thống.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsClearModalOpen(false)} disabled={isDeleting}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={handleClearAllLogs} disabled={isDeleting}>
+              {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+              Xác nhận xóa hết
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

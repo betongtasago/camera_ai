@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { INITIAL_VEHICLES } from '@/lib/storage'
+import { getGlobalVehicles, addGlobalLog, getGlobalLogs } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
 import { dbGetVehicles, dbAddDetectionLog } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
-
-// In-memory detection events
-let eventLogs: DetectionResult[] = []
 
 export async function POST(req: NextRequest) {
   try {
@@ -90,12 +87,15 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       }
     }
 
-    // Check against registered vehicles from Supabase
-    let fleet: Vehicle[] = [...INITIAL_VEHICLES]
+    // Check against registered vehicles from Supabase and global memory
+    let fleet: Vehicle[] = getGlobalVehicles()
     try {
-      fleet = await dbGetVehicles()
+      const fromDb = await dbGetVehicles()
+      if (fromDb.length > 0) {
+        fleet = fromDb
+      }
     } catch {
-      fleet = [...INITIAL_VEHICLES]
+      fleet = getGlobalVehicles()
     }
 
     const cleanDetectedPlate = detectedPlate.replace(/[^A-Z0-9]/g, '')
@@ -120,12 +120,12 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
     }
 
     // Persist detection log to Supabase and cache
-    await dbAddDetectionLog(eventResult)
-
-    eventLogs.unshift(eventResult)
-    if (eventLogs.length > 50) {
-      eventLogs = eventLogs.slice(0, 50)
+    try {
+      await dbAddDetectionLog(eventResult)
+    } catch {
+      // Supabase optional
     }
+    addGlobalLog(eventResult)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -149,5 +149,6 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
 }
 
 export async function GET() {
-  return NextResponse.json({ logs: eventLogs })
+  const logs = getGlobalLogs()
+  return NextResponse.json({ logs })
 }

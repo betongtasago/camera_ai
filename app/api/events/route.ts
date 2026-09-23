@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { INITIAL_EVENTS } from '@/lib/storage'
+import { getGlobalLogs, addGlobalLog, deleteGlobalLog, clearGlobalLogs } from '@/lib/storage'
 import { DetectionResult } from '@/lib/types'
 import { dbGetDetectionLogs, dbAddDetectionLog } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
-
-let eventsStorage: DetectionResult[] = [...INITIAL_EVENTS]
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -15,14 +13,13 @@ export async function GET(req: NextRequest) {
   try {
     const dbLogs = await dbGetDetectionLogs()
     if (dbLogs.length > 0) {
-      eventsStorage = dbLogs
       list = dbLogs
     } else {
-      list = [...eventsStorage]
+      list = getGlobalLogs()
     }
   } catch {
     console.error('Error fetching detection events from database')
-    list = [...eventsStorage]
+    list = getGlobalLogs()
   }
 
   if (query) {
@@ -51,13 +48,13 @@ export async function POST(req: NextRequest) {
       timestamp: body.timestamp || new Date().toISOString(),
     }
 
-    // Persist to Supabase
-    await dbAddDetectionLog(newEvent)
-
-    eventsStorage.unshift(newEvent)
-    if (eventsStorage.length > 100) {
-      eventsStorage = eventsStorage.slice(0, 100)
+    // Persist to Supabase if available
+    try {
+      await dbAddDetectionLog(newEvent)
+    } catch {
+      // Supabase optional
     }
+    addGlobalLog(newEvent)
 
     // Broadcast instant sync event to all connected browsers
     broadcastRealtime({
@@ -73,11 +70,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
-  eventsStorage = []
-  broadcastRealtime({
-    type: 'logs_updated',
-    timestamp: Date.now(),
-  })
-  return NextResponse.json({ success: true, message: 'Đã xóa toàn bộ nhật ký' })
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (id) {
+      deleteGlobalLog(id)
+      broadcastRealtime({
+        type: 'logs_updated',
+        logId: id,
+        timestamp: Date.now(),
+      })
+      return NextResponse.json({ success: true, message: 'Đã xóa bản ghi nhật ký' })
+    }
+
+    clearGlobalLogs()
+    broadcastRealtime({
+      type: 'logs_updated',
+      timestamp: Date.now(),
+    })
+    return NextResponse.json({ success: true, message: 'Đã xóa toàn bộ nhật ký' })
+  } catch {
+    console.error('Error deleting detection log')
+    return NextResponse.json({ error: 'Lỗi khi xóa nhật ký' }, { status: 500 })
+  }
 }

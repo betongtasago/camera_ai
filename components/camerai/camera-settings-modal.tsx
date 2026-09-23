@@ -28,22 +28,46 @@ import {
   Radio,
   Activity,
   Wifi,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { CameraConfig } from '@/lib/types'
 import { toast } from 'sonner'
 
 interface CameraSettingsModalProps {
   currentCamera: CameraConfig
+  cameras?: CameraConfig[]
   onCameraUpdated?: (cam: CameraConfig) => void
+  onSelectCamera?: (cam: CameraConfig) => void
+  onCameraAdded?: (cam: CameraConfig) => void
+  onCameraDeleted?: (id: string) => void
 }
 
-export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSettingsModalProps) {
+export function CameraSettingsModal({
+  currentCamera,
+  cameras = [],
+  onCameraUpdated,
+  onSelectCamera,
+  onCameraAdded,
+  onCameraDeleted,
+}: CameraSettingsModalProps) {
   const [activeSubTab, setActiveSubTab] = useState<'camera' | 'supabase' | 'telegram'>('supabase')
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const [cameraToDelete, setCameraToDelete] = useState<CameraConfig | null>(null)
+  const [isDeletingCam, setIsDeletingCam] = useState(false)
 
   // Camera fields
   const [camName, setCamName] = useState(currentCamera.name)
@@ -73,20 +97,22 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
 
   // Sync state whenever currentCamera prop changes
   useEffect(() => {
-    setCamName(currentCamera.name)
-    setCamLocation(currentCamera.location)
-    setStreamType(currentCamera.streamType)
-    setIpAddress(currentCamera.ipAddress || '192.168.1.108')
-    setPort(String(currentCamera.port || 554))
-    setUsername(currentCamera.username || 'admin')
-    setStreamUrl(
-      currentCamera.streamUrl ||
-        `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
-    )
-    setAutoZoom(currentCamera.autoZoomPlate)
-    setAiDetection(currentCamera.aiDetectionEnabled)
-    setCameraTestResult(null)
-  }, [currentCamera])
+    if (!isCreatingNew) {
+      setCamName(currentCamera.name)
+      setCamLocation(currentCamera.location)
+      setStreamType(currentCamera.streamType)
+      setIpAddress(currentCamera.ipAddress || '192.168.1.108')
+      setPort(String(currentCamera.port || 554))
+      setUsername(currentCamera.username || 'admin')
+      setStreamUrl(
+        currentCamera.streamUrl ||
+          `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
+      )
+      setAutoZoom(currentCamera.autoZoomPlate)
+      setAiDetection(currentCamera.aiDetectionEnabled)
+      setCameraTestResult(null)
+    }
+  }, [currentCamera, isCreatingNew])
 
   // Supabase fields
   const [supabaseUrl, setSupabaseUrl] = useState('')
@@ -207,37 +233,86 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
     }
   }
 
-  // Save camera settings
+  // Save or Create camera settings
   const handleSaveCamera = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const updated: CameraConfig = {
-        ...currentCamera,
-        name: camName,
-        location: camLocation,
-        streamType,
-        ipAddress,
-        port: Number(port),
-        username,
-        streamUrl,
-        autoZoomPlate: autoZoom,
-        aiDetectionEnabled: aiDetection,
-      }
+      if (isCreatingNew) {
+        const newCam = {
+          name: camName,
+          location: camLocation,
+          streamType,
+          ipAddress,
+          port: Number(port),
+          username,
+          streamUrl,
+          autoZoomPlate: autoZoom,
+          aiDetectionEnabled: aiDetection,
+        }
 
-      const res = await fetch('/api/cameras', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated),
-      })
+        const res = await fetch('/api/cameras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCam),
+        })
 
-      if (res.ok) {
-        onCameraUpdated?.(updated)
-        toast.success(`Đã lưu cấu hình Camera IP [${camName}] thành công!`)
+        const data = await res.json()
+        if (res.ok && data.camera) {
+          onCameraAdded?.(data.camera)
+          setIsCreatingNew(false)
+          toast.success(`Đã thêm kênh Camera mới [${camName}] thành công!`)
+        } else {
+          toast.error(data.error || 'Không thể tạo camera mới')
+        }
       } else {
-        toast.error('Không thể lưu cấu hình camera')
+        const updated: CameraConfig = {
+          ...currentCamera,
+          name: camName,
+          location: camLocation,
+          streamType,
+          ipAddress,
+          port: Number(port),
+          username,
+          streamUrl,
+          autoZoomPlate: autoZoom,
+          aiDetectionEnabled: aiDetection,
+        }
+
+        const res = await fetch('/api/cameras', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        })
+
+        if (res.ok) {
+          onCameraUpdated?.(updated)
+          toast.success(`Đã lưu cấu hình Camera IP [${camName}] thành công!`)
+        } else {
+          toast.error('Không thể lưu cấu hình camera')
+        }
       }
     } catch {
       toast.error('Lỗi khi kết nối với máy chủ')
+    }
+  }
+
+  // Delete camera channel execution
+  const handleExecuteDeleteCamera = async () => {
+    if (!cameraToDelete) return
+    setIsDeletingCam(true)
+    try {
+      const res = await fetch(`/api/cameras?id=${cameraToDelete.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(`Đã xóa kênh Camera [${cameraToDelete.name}] thành công!`)
+        onCameraDeleted?.(cameraToDelete.id)
+        setCameraToDelete(null)
+      } else {
+        toast.error('Không thể xóa camera')
+      }
+    } catch {
+      toast.error('Lỗi khi xóa camera')
+    } finally {
+      setIsDeletingCam(false)
     }
   }
 
@@ -628,18 +703,92 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
 
       {/* Sub Tab 2: Camera IP Config */}
       {activeSubTab === 'camera' && (
-        <form onSubmit={handleSaveCamera} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Tên Camera *</Label>
-              <Input
-                value={camName}
-                onChange={(e) => setCamName(e.target.value)}
-                placeholder="CAM 01 - Cân xe / Khu sửa chữa"
-                className="text-sm"
-                required
-              />
+        <div className="space-y-4">
+          {/* Camera Channels Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2.5 bg-muted/40 rounded-xl border border-border">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground px-1">Kênh Camera:</span>
+              {cameras.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingNew(false)
+                    onSelectCamera?.(c)
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                    !isCreatingNew && currentCamera.id === c.id
+                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      : 'bg-card hover:bg-muted text-foreground border border-border'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
             </div>
+
+            <div className="flex items-center gap-1.5">
+              {!isCreatingNew ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreatingNew(true)
+                    setCamName(`CAM 0${cameras.length + 1} - Lối Vào Cổng Phụ`)
+                    setCamLocation('CAN - CONG PHU')
+                    setIpAddress('192.168.1.109')
+                    setPort('554')
+                    setUsername('admin')
+                    setStreamUrl('rtsp://admin:••••••••@192.168.1.109:554/Streaming/Channels/101')
+                    setCameraTestResult(null)
+                  }}
+                  className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
+                >
+                  + Thêm Camera Mới
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsCreatingNew(false)
+                    onSelectCamera?.(currentCamera)
+                  }}
+                  className="text-xs h-8 text-muted-foreground"
+                >
+                  Hủy tạo mới
+                </Button>
+              )}
+
+              {!isCreatingNew && cameras.length > 1 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCameraToDelete(currentCamera)}
+                  className="text-xs h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  title="Xóa kênh camera này"
+                >
+                  Xóa kênh
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveCamera} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Tên Camera *</Label>
+                <Input
+                  value={camName}
+                  onChange={(e) => setCamName(e.target.value)}
+                  placeholder="CAM 01 - Cân xe / Khu sửa chữa"
+                  className="text-sm"
+                  required
+                />
+              </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Vị trí hiển thị trên OSD *</Label>
@@ -838,10 +987,44 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
           <div className="flex justify-end pt-2">
             <Button type="submit" className="text-sm h-10 px-5">
               <Save className="w-4 h-4 mr-1.5" />
-              Lưu Cấu Hình Camera
+              {isCreatingNew ? 'Thêm Kênh Camera Mới' : 'Lưu Cấu Hình Camera'}
             </Button>
           </div>
         </form>
+
+        {/* Dialog: Delete Camera Confirmation */}
+        <Dialog open={Boolean(cameraToDelete)} onOpenChange={(open) => !open && setCameraToDelete(null)}>
+          <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Xóa Kênh Camera
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Bạn có chắc chắn muốn gỡ kênh Camera{' '}
+                <strong className="text-foreground font-semibold">[{cameraToDelete?.name}]</strong> khỏi hệ thống?
+              </DialogDescription>
+            </DialogHeader>
+
+            {cameraToDelete && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs space-y-1">
+                <div>Vị trí: <span className="font-mono text-foreground font-semibold">{cameraToDelete.location}</span></div>
+                <div>Địa chỉ IP: <span className="font-mono text-foreground">{cameraToDelete.ipAddress}:{cameraToDelete.port}</span></div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" onClick={() => setCameraToDelete(null)} disabled={isDeletingCam}>
+                Hủy
+              </Button>
+              <Button variant="destructive" onClick={handleExecuteDeleteCamera} disabled={isDeletingCam}>
+                {isDeletingCam && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                Xác nhận xóa camera
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
       )}
 
       {/* Sub Tab 3: Telegram Bot Notification */}

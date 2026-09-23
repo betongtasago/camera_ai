@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Truck,
   Plus,
@@ -11,12 +11,13 @@ import {
   AlertCircle,
   XCircle,
   Download,
-  Filter,
-  UserCheck,
-  Shield,
-  Phone,
+  Upload,
   FileSpreadsheet,
   RotateCcw,
+  Shield,
+  FileText,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,18 +38,26 @@ import { toast } from 'sonner'
 interface VehicleManagementProps {
   userRole?: UserRole
   onFleetUpdated?: (vehicles: Vehicle[]) => void
+  initialPlate?: string
+  autoOpenCreate?: boolean
 }
 
-export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: VehicleManagementProps) {
+export function VehicleManagement({
+  userRole = 'admin',
+  onFleetUpdated,
+  initialPlate,
+  autoOpenCreate = false,
+}: VehicleManagementProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'restricted' | 'blacklisted'>('all')
 
-  // Modal State
+  // Modal State for Add / Edit
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [currentId, setCurrentId] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
     plateNumber: '',
     driverName: '',
@@ -59,35 +68,45 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
     notes: '',
   })
 
+  // Delete Confirmation Modal State (replaces blocked native confirm)
+  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // File import ref
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   // Fetch vehicles
-  const fetchVehicles = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true)
-    try {
-      const res = await fetch('/api/vehicles')
-      if (res.ok) {
-        const data = await res.json()
-        setVehicles(data.vehicles || [])
-        onFleetUpdated?.(data.vehicles || [])
+  const fetchVehicles = useCallback(
+    async (isSilent = false) => {
+      if (!isSilent) setIsLoading(true)
+      try {
+        const res = await fetch('/api/vehicles')
+        if (res.ok) {
+          const data = await res.json()
+          setVehicles(data.vehicles || [])
+          onFleetUpdated?.(data.vehicles || [])
+        }
+      } catch {
+        console.error('Error fetching vehicles')
+        if (!isSilent) toast.error('Không thể tải danh mục xe')
+      } finally {
+        if (!isSilent) setIsLoading(false)
       }
-    } catch {
-      console.error('Error fetching vehicles')
-      if (!isSilent) toast.error('Không thể tải danh mục xe')
-    } finally {
-      if (!isSilent) setIsLoading(false)
-    }
-  }, [onFleetUpdated])
+    },
+    [onFleetUpdated],
+  )
 
   // Real-time synchronization across all browser tabs and external sessions
-  const { status: syncStatus, broadcastLocally } = useRealtimeSync({
+  const { broadcastLocally } = useRealtimeSync({
     onVehiclesUpdated: (msg) => {
       fetchVehicles(true)
       if (msg.type === 'vehicles_updated') {
         if (msg.action === 'create') {
-          toast.info('Hệ thống vừa cập nhật thêm xe mới vào danh mục (đồng bộ tức thời)')
+          toast.info('Hệ thống vừa cập nhật thêm xe mới vào danh mục')
         } else if (msg.action === 'update') {
-          toast.info('Thông tin xe vừa được quản trị viên cập nhật (đồng bộ tức thời)')
+          toast.info('Thông tin xe vừa được cập nhật')
         } else if (msg.action === 'delete') {
-          toast.info('Một xe vừa được gỡ khỏi danh mục (đồng bộ tức thời)')
+          toast.info('Một xe vừa được gỡ khỏi danh mục')
         }
       }
     },
@@ -99,6 +118,24 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
   useEffect(() => {
     fetchVehicles()
   }, [fetchVehicles])
+
+  // Auto open create modal if requested with initialPlate
+  useEffect(() => {
+    if (initialPlate || autoOpenCreate) {
+      setIsEditing(false)
+      setCurrentId('')
+      setFormData({
+        plateNumber: initialPlate ? initialPlate.toUpperCase() : '',
+        driverName: '',
+        vehicleType: 'Xe bồn bê tông Howo 12m³',
+        company: 'Bê Tông Xanh Sài Gòn',
+        phoneNumber: '',
+        status: 'approved',
+        notes: initialPlate ? `Đăng ký từ camera nhận diện biển số ${initialPlate}` : '',
+      })
+      setIsModalOpen(true)
+    }
+  }, [initialPlate, autoOpenCreate])
 
   // Filtered vehicles
   const filteredVehicles = useMemo(() => {
@@ -145,7 +182,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
     setIsModalOpen(true)
   }
 
-  // Save vehicle
+  // Save vehicle (Add / Edit)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.plateNumber.trim() || !formData.driverName.trim() || !formData.vehicleType.trim()) {
@@ -153,6 +190,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       return
     }
 
+    setIsSaving(true)
     try {
       const url = '/api/vehicles'
       const method = isEditing ? 'PUT' : 'POST'
@@ -167,34 +205,73 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       const result = await res.json()
 
       if (res.ok) {
-        toast.success(isEditing ? 'Cập nhật xe thành công' : 'Đã thêm xe mới vào danh mục')
+        toast.success(isEditing ? 'Cập nhật thông tin xe thành công!' : 'Đã thêm xe mới vào danh mục thành công!')
         setIsModalOpen(false)
-        fetchVehicles()
+        await fetchVehicles(true)
         broadcastLocally({
           type: 'vehicles_updated',
           action: isEditing ? 'update' : 'create',
           timestamp: Date.now(),
         })
       } else {
-        toast.error(result.error || 'Có lỗi xảy ra')
+        toast.error(result.error || 'Có lỗi xảy ra khi lưu xe')
       }
     } catch {
       toast.error('Lỗi kết nối khi lưu xe')
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  // Delete vehicle
-  const handleDelete = async (id: string, plate: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa xe ${plate} khỏi danh mục?`)) return
+  // Quick 1-click Status Toggle (Approved <-> Restricted <-> Blacklisted)
+  const handleQuickStatusChange = async (
+    vehicle: Vehicle,
+    newStatus: 'approved' | 'restricted' | 'blacklisted',
+  ) => {
+    if (userRole !== 'admin') {
+      toast.error('Chỉ tài khoản Quản trị viên (Admin) mới có quyền đổi trạng thái xe')
+      return
+    }
+
     try {
-      const res = await fetch(`/api/vehicles?id=${id}`, { method: 'DELETE' })
+      const res = await fetch('/api/vehicles', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...vehicle, status: newStatus }),
+      })
+
       if (res.ok) {
-        toast.success(`Đã xóa xe ${plate}`)
-        fetchVehicles()
+        const label =
+          newStatus === 'approved' ? 'Hợp lệ' : newStatus === 'restricted' ? 'Kiểm tra' : 'Chặn cổng'
+        toast.success(`Đã đổi trạng thái xe ${vehicle.plateNumber} thành "${label}"`)
+        setVehicles((prev) => prev.map((v) => (v.id === vehicle.id ? { ...v, status: newStatus } : v)))
+        broadcastLocally({
+          type: 'vehicles_updated',
+          action: 'update',
+          timestamp: Date.now(),
+        })
+      } else {
+        toast.error('Không thể cập nhật trạng thái xe')
+      }
+    } catch {
+      toast.error('Lỗi khi đổi trạng thái xe')
+    }
+  }
+
+  // Execute Delete from custom modal
+  const handleExecuteDelete = async () => {
+    if (!vehicleToDelete) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/vehicles?id=${vehicleToDelete.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success(`Đã xóa vĩnh viễn xe ${vehicleToDelete.plateNumber} khỏi danh mục`)
+        setVehicleToDelete(null)
+        await fetchVehicles(true)
         broadcastLocally({
           type: 'vehicles_updated',
           action: 'delete',
-          vehicleId: id,
+          vehicleId: vehicleToDelete.id,
           timestamp: Date.now(),
         })
       } else {
@@ -202,6 +279,8 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       }
     } catch {
       toast.error('Lỗi khi xóa xe')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -233,13 +312,117 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
     link.href = URL.createObjectURL(blob)
     link.download = `Danh_Sach_Xe_CamerAI_${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
-    toast.success('Đã tải xuống file CSV')
+    toast.success('Đã tải xuống file CSV danh sách xe')
+  }
+
+  // Import CSV / File
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      const text = event.target?.result as string
+      if (!text) return
+
+      const lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+
+      if (lines.length === 0) {
+        toast.error('File rỗng, không có dữ liệu xe')
+        return
+      }
+
+      const parsedVehicles: Partial<Vehicle>[] = []
+      // Skip header if it has headers
+      const startIndex =
+        lines[0].toLowerCase().includes('biển') || lines[0].toLowerCase().includes('plate') ? 1 : 0
+
+      for (let i = startIndex; i < lines.length; i++) {
+        const parts = lines[i].split(',').map((p) => p.replace(/^"|"$/g, '').trim())
+        if (parts.length >= 2) {
+          const plate = parts[1] || parts[0]
+          if (plate && plate.length >= 4) {
+            parsedVehicles.push({
+              plateNumber: plate.toUpperCase(),
+              driverName: parts[2] || parts[1] || 'Tài xế nhập file',
+              vehicleType: parts[3] || 'Xe bồn bê tông Howo',
+              company: parts[4] || 'Bê Tông Xanh Sài Gòn',
+              phoneNumber: parts[5] || '',
+              status: parts[6]?.toLowerCase().includes('chặn')
+                ? 'blacklisted'
+                : parts[6]?.toLowerCase().includes('kiểm')
+                  ? 'restricted'
+                  : 'approved',
+              notes: parts[7] || 'Nhập từ file Excel',
+            })
+          }
+        }
+      }
+
+      if (parsedVehicles.length === 0) {
+        toast.error('Không tìm thấy thông tin xe hợp lệ trong file')
+        return
+      }
+
+      try {
+        const res = await fetch('/api/vehicles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vehicles: parsedVehicles }),
+        })
+
+        const data = await res.json()
+        if (res.ok) {
+          toast.success(`Đã nạp thành công ${data.count || parsedVehicles.length} xe vào hệ thống!`)
+          await fetchVehicles()
+          broadcastLocally({
+            type: 'vehicles_updated',
+            action: 'create',
+            timestamp: Date.now(),
+          })
+        } else {
+          toast.error(data.error || 'Lỗi khi nhập dữ liệu')
+        }
+      } catch {
+        toast.error('Lỗi kết nối khi gửi dữ liệu nhập lên hệ thống')
+      }
+    }
+
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  // Download Sample CSV template
+  const handleDownloadTemplate = () => {
+    const sample = `STT,Biển Số Xe,Tên Tài Xế,Loại Xe,Đơn Vị/Công Ty,Số Điện Thoại,Trạng Thái,Ghi Chú
+1,51N-043.57,Lê Văn Hùng,Xe bồn bê tông Howo 12m³,Bê Tông Xanh Sài Gòn,0903.112.445,Hợp lệ,Xe trạm trộn trung tâm
+2,50H-123.45,Trần Văn Mạnh,Xe bồn Hyundai HD270 10m³,Bê Tông Xanh Sài Gòn,0912.889.332,Hợp lệ,Tuyến công trình Quận 9
+3,60C-892.11,Nguyễn Quốc Tuấn,Xe tải ben Howo 4 chân,Vận tải Đông Nam Bộ,0988.441.229,Hợp lệ,Cung cấp đá dăm cát vàng
+4,29C-556.78,Đặng Đình Khoa,Xe tải thùng 8 tấn,Vãng lai chưa đăng ký,0902.999.111,Kiểm tra,Cần bảo vệ kiểm tra giấy tờ`
+    const blob = new Blob(['\uFEFF' + sample], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'Mau_Danh_Sach_Xe_CamerAI.csv'
+    link.click()
+    toast.success('Đã tải xuống file mẫu danh sách xe CSV')
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Hidden file input for import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv,.txt"
+        onChange={handleFileImport}
+        className="hidden"
+      />
+
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-xs">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <Truck className="w-5 h-5 text-primary" />
@@ -249,7 +432,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
               className="text-[10px] font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 flex items-center gap-1 py-0.5"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              ĐỒNG BỘ TỨC THỜI (REALTIME)
+              ĐỒNG BỘ TỨC THỜI ({vehicles.length} XE)
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -257,17 +440,43 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export button */}
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-xs h-9">
             <Download className="w-3.5 h-3.5 mr-1.5" />
             Xuất Excel/CSV
           </Button>
 
+          {/* Admin only actions: Import & Add */}
           {userRole === 'admin' && (
-            <Button size="sm" onClick={handleOpenCreate} className="text-xs h-9 font-medium">
-              <Plus className="w-4 h-4 mr-1.5" />
-              Thêm xe mới
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs h-9 border-border bg-card"
+                title="Tải lên danh sách xe từ file CSV"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                Nhập file CSV
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-xs h-9 text-muted-foreground hidden sm:flex"
+                title="Tải file mẫu Excel/CSV"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1" />
+                File mẫu
+              </Button>
+
+              <Button size="sm" onClick={handleOpenCreate} className="text-xs h-9 font-medium shadow-sm">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Thêm xe mới
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -280,7 +489,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo biển số (51N-043.57), tên tài xế, loại xe, đơn vị..."
-            className="pl-9 h-10 text-sm"
+            className="pl-9 h-10 text-sm bg-card"
           />
         </div>
 
@@ -296,7 +505,13 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
             <option value="blacklisted">Danh sách đen / Chặn</option>
           </select>
 
-          <Button variant="ghost" size="icon" onClick={() => fetchVehicles()} title="Tải lại">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => fetchVehicles()}
+            title="Tải lại danh sách"
+            className="shrink-0"
+          >
             <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -314,15 +529,15 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                 <th className="px-4 py-3">Loại Phương Tiện</th>
                 <th className="px-4 py-3">Đơn Vị / Công Ty</th>
                 <th className="px-4 py-3">Số Điện Thoại</th>
-                <th className="px-4 py-3">Trạng Thái</th>
-                {userRole === 'admin' && <th className="px-4 py-3 text-right">Thao Tác</th>}
+                <th className="px-4 py-3">Trạng Thái Cấp Phép</th>
+                {userRole === 'admin' && <th className="px-4 py-3 text-right">Thao Tác Quản Trị</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredVehicles.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                    Không tìm thấy phương tiện nào phù hợp
+                    {searchQuery ? 'Không tìm thấy xe nào khớp với từ khóa tìm kiếm' : 'Chưa có phương tiện nào trong danh mục'}
                   </td>
                 </tr>
               ) : (
@@ -341,23 +556,67 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                       {vehicle.phoneNumber || '—'}
                     </td>
                     <td className="px-4 py-3.5">
-                      {vehicle.status === 'approved' && (
-                        <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Hợp Lệ (Cho qua)
-                        </Badge>
-                      )}
-                      {vehicle.status === 'restricted' && (
-                        <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-xs">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Kiểm Tra
-                        </Badge>
-                      )}
-                      {vehicle.status === 'blacklisted' && (
-                        <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 text-xs">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Chặn Cổng
-                        </Badge>
+                      {/* Interactive quick status toggle for Admin, badge for others */}
+                      {userRole === 'admin' ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickStatusChange(vehicle, 'approved')}
+                            title="Bấm để cấp phép Hợp Lệ"
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
+                              vehicle.status === 'approved'
+                                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/50 shadow-xs'
+                                : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
+                            }`}
+                          >
+                            ✓ Hợp lệ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickStatusChange(vehicle, 'restricted')}
+                            title="Bấm để đặt Kiểm tra"
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
+                              vehicle.status === 'restricted'
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50 shadow-xs'
+                                : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
+                            }`}
+                          >
+                            ! Kiểm tra
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickStatusChange(vehicle, 'blacklisted')}
+                            title="Bấm để Chặn vào cổng"
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border ${
+                              vehicle.status === 'blacklisted'
+                                ? 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/50 shadow-xs'
+                                : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
+                            }`}
+                          >
+                            ✕ Chặn
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          {vehicle.status === 'approved' && (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Hợp Lệ (Cho qua)
+                            </Badge>
+                          )}
+                          {vehicle.status === 'restricted' && (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-xs">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Kiểm Tra
+                            </Badge>
+                          )}
+                          {vehicle.status === 'blacklisted' && (
+                            <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 text-xs">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Chặn Cổng
+                            </Badge>
+                          )}
+                        </div>
                       )}
                     </td>
                     {userRole === 'admin' && (
@@ -368,6 +627,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
                             onClick={() => handleOpenEdit(vehicle)}
+                            title="Chỉnh sửa thông tin xe"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </Button>
@@ -375,9 +635,10 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDelete(vehicle.id, vehicle.plateNumber)}
+                            onClick={() => setVehicleToDelete(vehicle)}
+                            title="Xóa xe khỏi danh mục"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                           </Button>
                         </div>
                       </td>
@@ -395,7 +656,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
             <div className="p-6 text-center text-muted-foreground text-sm">Không tìm thấy phương tiện nào</div>
           ) : (
             filteredVehicles.map((vehicle) => (
-              <div key={vehicle.id} className="p-3.5 flex flex-col gap-2">
+              <div key={vehicle.id} className="p-3.5 flex flex-col gap-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-mono font-bold text-base text-foreground tracking-wide">
@@ -437,25 +698,51 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                 </div>
 
                 {userRole === 'admin' && (
-                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/50">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs px-3"
-                      onClick={() => handleOpenEdit(vehicle)}
-                    >
-                      <Edit2 className="w-3.5 h-3.5 mr-1" />
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs px-3 text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => handleDelete(vehicle.id, vehicle.plateNumber)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      Xóa
-                    </Button>
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStatusChange(vehicle, 'approved')}
+                        className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                          vehicle.status === 'approved'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        Cho qua
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStatusChange(vehicle, 'blacklisted')}
+                        className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                          vehicle.status === 'blacklisted'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        Chặn
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-2.5"
+                        onClick={() => handleOpenEdit(vehicle)}
+                      >
+                        <Edit2 className="w-3.5 h-3.5 mr-1" />
+                        Sửa
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs px-2 text-destructive hover:bg-destructive/10"
+                        onClick={() => setVehicleToDelete(vehicle)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -464,7 +751,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
         </div>
       </div>
 
-      {/* Add / Edit Vehicle Modal */}
+      {/* Dialog 1: Add or Edit Vehicle Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -581,9 +868,70 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit">{isEditing ? 'Lưu thay đổi' : 'Xác nhận thêm xe'}</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                {isEditing ? 'Lưu thay đổi' : 'Xác nhận thêm xe'}
+              </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog 2: Delete Confirmation Modal (Reliable, Unblocked) */}
+      <Dialog open={Boolean(vehicleToDelete)} onOpenChange={(open) => !open && setVehicleToDelete(null)}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Xác Nhận Xóa Phương Tiện
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Hành động này sẽ xóa vĩnh viễn xe khỏi danh mục đối soát của Camera AI.
+            </DialogDescription>
+          </DialogHeader>
+
+          {vehicleToDelete && (
+            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Biển số:</span>
+                <span className="font-mono font-bold text-sm text-foreground bg-background px-2 py-0.5 rounded border">
+                  {vehicleToDelete.plateNumber}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tài xế:</span>
+                <span className="font-semibold text-foreground">{vehicleToDelete.driverName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Loại xe:</span>
+                <span className="text-foreground">{vehicleToDelete.vehicleType}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Đơn vị:</span>
+                <span className="text-foreground">{vehicleToDelete.company}</span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-3 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setVehicleToDelete(null)}
+              disabled={isDeleting}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleExecuteDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              Xác nhận xóa vĩnh viễn
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
