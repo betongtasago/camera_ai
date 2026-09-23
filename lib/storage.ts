@@ -46,7 +46,7 @@ export const INITIAL_CAMERAS: CameraConfig[] = [
     username: 'admin',
     password: '••••••••',
     fps: 30,
-    isOnline: true,
+    isOnline: false,
     aiDetectionEnabled: true,
     autoZoomPlate: true,
     createdAt: '2026-01-03T00:00:00Z',

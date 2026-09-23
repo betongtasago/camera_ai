@@ -52,7 +52,7 @@ export function CameraLiveFeed({
 
   // Stream state
   const [isPlaying, setIsPlaying] = useState(true)
-  const hasRealSignal = currentCamera.isOnline === true
+  const hasRealSignal = currentCamera.isOnline === true && currentCamera.streamType !== 'simulation'
   const [isApproaching, setIsApproaching] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [zoomEnabled, setZoomEnabled] = useState(true)

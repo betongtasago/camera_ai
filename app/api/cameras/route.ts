@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       username: username?.trim() || 'admin',
       password: password?.trim() || undefined,
       fps: fps ? Number(fps) : 30,
-      isOnline: true,
+      isOnline: false,
       aiDetectionEnabled: true,
       autoZoomPlate: autoZoomPlate !== false,
       createdAt: new Date().toISOString(),
