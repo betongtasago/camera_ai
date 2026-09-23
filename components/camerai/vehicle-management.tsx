@@ -261,21 +261,29 @@ export function VehicleManagement({
   // Execute Delete from custom modal
   const handleExecuteDelete = async () => {
     if (!vehicleToDelete) return
+    const idToDelete = vehicleToDelete.id
+    const plateToDelete = vehicleToDelete.plateNumber
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/vehicles?id=${vehicleToDelete.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/vehicles?id=${encodeURIComponent(idToDelete)}`, { method: 'DELETE' })
       if (res.ok) {
-        toast.success(`Đã xóa vĩnh viễn xe ${vehicleToDelete.plateNumber} khỏi danh mục`)
+        toast.success(`Đã xóa vĩnh viễn xe ${plateToDelete} khỏi danh mục`)
         setVehicleToDelete(null)
+        setVehicles((prev) => {
+          const updated = prev.filter((v) => v.id !== idToDelete && v.plateNumber !== plateToDelete)
+          onFleetUpdated?.(updated)
+          return updated
+        })
         await fetchVehicles(true)
         broadcastLocally({
           type: 'vehicles_updated',
           action: 'delete',
-          vehicleId: vehicleToDelete.id,
+          vehicleId: idToDelete,
           timestamp: Date.now(),
         })
       } else {
-        toast.error('Không thể xóa xe')
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error || 'Không thể xóa xe')
       }
     } catch {
       toast.error('Lỗi khi xóa xe')

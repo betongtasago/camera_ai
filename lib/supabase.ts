@@ -48,9 +48,9 @@ export function getSupabaseClient(): SupabaseClient | null {
 // ----------------------------------------------------------------------
 // 1. VEHICLES REPOSITORY
 // ----------------------------------------------------------------------
-export async function dbGetVehicles(): Promise<Vehicle[]> {
+export async function dbGetVehicles(): Promise<Vehicle[] | null> {
   const client = getSupabaseClient()
-  if (!client) return [...INITIAL_VEHICLES]
+  if (!client) return null
 
   try {
     const { data, error } = await client
@@ -60,11 +60,7 @@ export async function dbGetVehicles(): Promise<Vehicle[]> {
 
     if (error || !data) {
       console.warn('Could not read vehicles from Supabase, using fallback')
-      return [...INITIAL_VEHICLES]
-    }
-
-    if (data.length === 0) {
-      return [...INITIAL_VEHICLES]
+      return null
     }
 
     return data.map((item) => ({
@@ -80,7 +76,7 @@ export async function dbGetVehicles(): Promise<Vehicle[]> {
     }))
   } catch {
     console.error('Supabase vehicles fetch error occurred')
-    return [...INITIAL_VEHICLES]
+    return null
   }
 }
 
@@ -163,15 +159,15 @@ export async function dbDeleteVehicle(id: string): Promise<boolean> {
 // ----------------------------------------------------------------------
 // 2. CAMERAS REPOSITORY
 // ----------------------------------------------------------------------
-export async function dbGetCameras(): Promise<CameraConfig[]> {
+export async function dbGetCameras(): Promise<CameraConfig[] | null> {
   const client = getSupabaseClient()
-  if (!client) return [...INITIAL_CAMERAS]
+  if (!client) return null
 
   try {
     const { data, error } = await client.from('camerai_cameras').select('*').order('created_at', { ascending: true })
 
-    if (error || !data || data.length === 0) {
-      return [...INITIAL_CAMERAS]
+    if (error || !data) {
+      return null
     }
 
     return data.map((item) => ({
@@ -192,7 +188,24 @@ export async function dbGetCameras(): Promise<CameraConfig[]> {
     }))
   } catch {
     console.error('Supabase cameras fetch error occurred')
-    return [...INITIAL_CAMERAS]
+    return null
+  }
+}
+
+export async function dbDeleteCamera(id: string): Promise<boolean> {
+  const client = getSupabaseClient()
+  if (!client) return false
+
+  try {
+    const { error } = await client.from('camerai_cameras').delete().eq('id', id)
+    if (error) {
+      console.error('Failed to delete camera in Supabase')
+      return false
+    }
+    return true
+  } catch {
+    console.error('Supabase camera delete exception occurred')
+    return false
   }
 }
 
@@ -267,9 +280,9 @@ export async function dbUpdateCamera(camera: CameraConfig): Promise<boolean> {
 // ----------------------------------------------------------------------
 // 3. DETECTION LOGS REPOSITORY
 // ----------------------------------------------------------------------
-export async function dbGetDetectionLogs(): Promise<DetectionResult[]> {
+export async function dbGetDetectionLogs(): Promise<DetectionResult[] | null> {
   const client = getSupabaseClient()
-  if (!client) return [...INITIAL_EVENTS]
+  if (!client) return null
 
   try {
     const { data, error } = await client
@@ -278,8 +291,8 @@ export async function dbGetDetectionLogs(): Promise<DetectionResult[]> {
       .order('timestamp', { ascending: false })
       .limit(100)
 
-    if (error || !data || data.length === 0) {
-      return [...INITIAL_EVENTS]
+    if (error || !data) {
+      return null
     }
 
     return data.map((item) => ({
@@ -298,7 +311,41 @@ export async function dbGetDetectionLogs(): Promise<DetectionResult[]> {
     }))
   } catch {
     console.error('Supabase detection logs fetch error occurred')
-    return [...INITIAL_EVENTS]
+    return null
+  }
+}
+
+export async function dbDeleteDetectionLog(id: string): Promise<boolean> {
+  const client = getSupabaseClient()
+  if (!client) return false
+
+  try {
+    const { error } = await client.from('camerai_detection_logs').delete().eq('id', id)
+    if (error) {
+      console.error('Failed to delete detection log in Supabase')
+      return false
+    }
+    return true
+  } catch {
+    console.error('Supabase detection log delete exception occurred')
+    return false
+  }
+}
+
+export async function dbClearDetectionLogs(): Promise<boolean> {
+  const client = getSupabaseClient()
+  if (!client) return false
+
+  try {
+    const { error } = await client.from('camerai_detection_logs').delete().neq('id', '___empty___')
+    if (error) {
+      console.error('Failed to clear detection logs in Supabase')
+      return false
+    }
+    return true
+  } catch {
+    console.error('Supabase clear detection logs exception occurred')
+    return false
   }
 }
 

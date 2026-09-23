@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGlobalLogs, addGlobalLog, deleteGlobalLog, clearGlobalLogs } from '@/lib/storage'
 import { DetectionResult } from '@/lib/types'
-import { dbGetDetectionLogs, dbAddDetectionLog } from '@/lib/supabase'
+import { dbGetDetectionLogs, dbAddDetectionLog, dbDeleteDetectionLog, dbClearDetectionLogs } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 
 export async function GET(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   let list: DetectionResult[] = []
   try {
     const dbLogs = await dbGetDetectionLogs()
-    if (dbLogs.length > 0) {
+    if (dbLogs !== null) {
       list = dbLogs
     } else {
       list = getGlobalLogs()
@@ -76,6 +76,11 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
+      try {
+        await dbDeleteDetectionLog(id)
+      } catch {
+        // Supabase optional
+      }
       deleteGlobalLog(id)
       broadcastRealtime({
         type: 'logs_updated',
@@ -85,6 +90,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Đã xóa bản ghi nhật ký' })
     }
 
+    try {
+      await dbClearDetectionLogs()
+    } catch {
+      // Supabase optional
+    }
     clearGlobalLogs()
     broadcastRealtime({
       type: 'logs_updated',

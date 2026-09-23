@@ -7,13 +7,13 @@ import {
   deleteGlobalCamera,
 } from '@/lib/storage'
 import { CameraConfig } from '@/lib/types'
-import { dbGetCameras, dbAddCamera, dbUpdateCamera } from '@/lib/supabase'
+import { dbGetCameras, dbAddCamera, dbUpdateCamera, dbDeleteCamera } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 
 export async function GET() {
   try {
     const list = await dbGetCameras()
-    if (list.length > 0) {
+    if (list !== null) {
       setGlobalCameras(list)
       return NextResponse.json({ cameras: list })
     }
@@ -143,6 +143,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Thiếu ID camera cần xóa' }, { status: 400 })
     }
 
+    try {
+      await dbDeleteCamera(id)
+    } catch {
+      // Supabase optional
+    }
     deleteGlobalCamera(id)
 
     // Broadcast instant sync event to all connected browsers

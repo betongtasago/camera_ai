@@ -18,9 +18,10 @@ export async function GET(req: NextRequest) {
   // Load from Supabase (or fallback to global memory)
   let results: Vehicle[] = []
   try {
-    results = await dbGetVehicles()
-    if (results.length > 0) {
-      setGlobalVehicles(results)
+    const dbList = await dbGetVehicles()
+    if (dbList !== null) {
+      setGlobalVehicles(dbList)
+      results = dbList
     } else {
       results = getGlobalVehicles()
     }

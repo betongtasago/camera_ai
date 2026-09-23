@@ -213,10 +213,16 @@ export function updateGlobalVehicle(vehicle: Vehicle): Vehicle | null {
   return vehicle
 }
 
-export function deleteGlobalVehicle(id: string): boolean {
+export function deleteGlobalVehicle(idOrPlate: string): boolean {
   const current = getGlobalVehicles()
   const initialLen = current.length
-  globalThis.__cameraiVehicles = current.filter((v) => v.id !== id && v.plateNumber !== id)
+  const cleanTarget = idOrPlate ? idOrPlate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+  globalThis.__cameraiVehicles = current.filter((v) => {
+    if (v.id === idOrPlate) return false
+    if (v.plateNumber === idOrPlate) return false
+    if (cleanTarget && v.plateNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanTarget) return false
+    return true
+  })
   return globalThis.__cameraiVehicles.length < initialLen
 }
 

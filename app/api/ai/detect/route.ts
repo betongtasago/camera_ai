@@ -91,7 +91,7 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
     let fleet: Vehicle[] = getGlobalVehicles()
     try {
       const fromDb = await dbGetVehicles()
-      if (fromDb.length > 0) {
+      if (fromDb && fromDb.length > 0) {
         fleet = fromDb
       }
     } catch {
