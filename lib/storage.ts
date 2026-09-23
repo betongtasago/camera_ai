@@ -182,5 +182,3 @@ export function setGlobalTelegramConfig(newConfig: Partial<TelegramConfig>): Tel
   }
   return currentTelegramConfig
 }
-
-

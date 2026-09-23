@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           success: true,
           simulated: true,
-          message: 'Mô phỏng gửi tin nhắn thử nghiệm Telegram thành công! (Điền Bot Token & Chat ID để gửi tới nhóm thực tế)',
+          message:
+            'Mô phỏng gửi tin nhắn thử nghiệm Telegram thành công! (Điền Bot Token & Chat ID để gửi tới nhóm thực tế)',
         })
       }
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
             success: false,
             error: tgResult.description || 'Lỗi từ Telegram API',
           },
-          { status: 400 }
+          { status: 400 },
         )
       }
 
@@ -58,9 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     const timeStr = new Date(det.timestamp || new Date()).toLocaleString('vi-VN')
-    const matchStatus = det.isMatch
-      ? '✅ *XE ĐÃ ĐĂNG KÝ*'
-      : '⚠️ *XE NGOÀI DANH MỤC*'
+    const matchStatus = det.isMatch ? '✅ *XE ĐÃ ĐĂNG KÝ*' : '⚠️ *XE NGOÀI DANH MỤC*'
 
     const messageText = [
       `🚨 *[CamerAI] PHÁT HIỆN XE QUA CAMERA*`,

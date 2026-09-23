@@ -25,13 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { DetectionResult, Vehicle, CameraConfig } from '@/lib/types'
 import { toast } from 'sonner'
 
-const ROTATING_FLEET = [
-  '51N-043.57',
-  '50H-123.45',
-  '60C-892.11',
-  '51D-998.12',
-  '29C-556.78',
-]
+const ROTATING_FLEET = ['51N-043.57', '50H-123.45', '60C-892.11', '51D-998.12', '29C-556.78']
 
 interface CameraLiveFeedProps {
   currentCamera: CameraConfig
@@ -67,37 +61,42 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
   const [cameraFps, setCameraFps] = useState(29.8)
 
   // Beep sound with Web Audio API
-  const playAlertSound = useCallback((isSuccess = true) => {
-    if (!soundEnabled || typeof window === 'undefined') return
-    try {
-      const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext
-      const ctx = new AudioContext()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
+  const playAlertSound = useCallback(
+    (isSuccess = true) => {
+      if (!soundEnabled || typeof window === 'undefined') return
+      try {
+        const AudioContext =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext
+        const ctx = new AudioContext()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
 
-      if (isSuccess) {
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(880, ctx.currentTime) // A5
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15)
-        gain.gain.setValueAtTime(0.15, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
-        osc.start()
-        osc.stop(ctx.currentTime + 0.25)
-      } else {
-        osc.type = 'sawtooth'
-        osc.frequency.setValueAtTime(440, ctx.currentTime)
-        osc.frequency.setValueAtTime(330, ctx.currentTime + 0.15)
-        gain.gain.setValueAtTime(0.2, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
-        osc.start()
-        osc.stop(ctx.currentTime + 0.35)
+        if (isSuccess) {
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(880, ctx.currentTime) // A5
+          osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15)
+          gain.gain.setValueAtTime(0.15, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
+          osc.start()
+          osc.stop(ctx.currentTime + 0.25)
+        } else {
+          osc.type = 'sawtooth'
+          osc.frequency.setValueAtTime(440, ctx.currentTime)
+          osc.frequency.setValueAtTime(330, ctx.currentTime + 0.15)
+          gain.gain.setValueAtTime(0.2, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
+          osc.start()
+          osc.stop(ctx.currentTime + 0.35)
+        }
+      } catch {
+        // Audio autoplay policy fallback
       }
-    } catch {
-      // Audio autoplay policy fallback
-    }
-  }, [soundEnabled])
+    },
+    [soundEnabled],
+  )
 
   // Clock updater
   useEffect(() => {
@@ -170,7 +169,7 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
         setIsAnalyzing(false)
       }
     },
-    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound]
+    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound],
   )
 
   // Auto-detect first vehicle upon opening / login from ANY browser
@@ -333,7 +332,7 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
           progress += direction
 
           // Auto-trigger detection and Telegram alert when vehicle approaches close range (~12m)
-          if (autoDetectEnabled && !hasTriggeredPassRef.current && progress >= 0.70 && direction > 0) {
+          if (autoDetectEnabled && !hasTriggeredPassRef.current && progress >= 0.7 && direction > 0) {
             hasTriggeredPassRef.current = true
             const currentPlate = customPlateInput || ROTATING_FLEET[fleetIndexRef.current % ROTATING_FLEET.length]
             runAiAnalysis(currentPlate)
@@ -554,7 +553,17 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
     return () => {
       cancelAnimationFrame(animId)
     }
-  }, [isPlaying, isApproaching, zoomEnabled, currentTimeStr, currentCamera, customPlateInput, useWebcam, autoDetectEnabled, runAiAnalysis])
+  }, [
+    isPlaying,
+    isApproaching,
+    zoomEnabled,
+    currentTimeStr,
+    currentCamera,
+    customPlateInput,
+    useWebcam,
+    autoDetectEnabled,
+    runAiAnalysis,
+  ])
 
   // Fullscreen trigger
   const handleFullscreen = () => {
@@ -583,13 +592,7 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
             className="w-full h-full object-cover block cursor-crosshair"
           />
         ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover block"
-          />
+          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover block" />
         )}
 
         {/* Automated Telegram Notification Pop-up Banner */}

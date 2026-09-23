@@ -29,9 +29,7 @@ export function MobileNav({ activeTab, onTabChange, onOpenAuth, userRole, isLogg
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all ${
-                isActive
-                  ? 'text-primary font-bold bg-primary/10'
-                  : 'text-muted-foreground hover:text-foreground'
+                isActive ? 'text-primary font-bold bg-primary/10' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'scale-110' : ''}`} />

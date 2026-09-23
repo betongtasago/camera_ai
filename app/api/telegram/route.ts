@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGlobalTelegramConfig, setGlobalTelegramConfig } from '@/lib/storage'
+import { dbGetTelegramConfig, dbSaveTelegramConfig } from '@/lib/supabase'
 
 // GET: Retrieve telegram settings
 export async function GET() {
+  try {
+    const dbConfig = await dbGetTelegramConfig()
+    if (dbConfig.botToken || dbConfig.chatId) {
+      setGlobalTelegramConfig(dbConfig)
+    }
+  } catch {
+    console.error('Error reading telegram config from database')
+  }
+
   const telegramConfig = getGlobalTelegramConfig()
   return NextResponse.json({
     config: {
@@ -29,6 +39,9 @@ export async function PUT(req: NextRequest) {
         notifyOnAllVehicles: Boolean(body.notifyOnAllVehicles),
       }),
     })
+
+    // Persist to Supabase
+    await dbSaveTelegramConfig(updated)
 
     return NextResponse.json({
       success: true,

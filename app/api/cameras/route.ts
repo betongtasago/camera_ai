@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_CAMERAS } from '@/lib/storage'
 import { CameraConfig } from '@/lib/types'
+import { dbGetCameras, dbAddCamera, dbUpdateCamera } from '@/lib/supabase'
 
 let camerasStorage: CameraConfig[] = [...INITIAL_CAMERAS]
 
 export async function GET() {
-  return NextResponse.json({ cameras: camerasStorage })
+  try {
+    const list = await dbGetCameras()
+    if (list.length > 0) {
+      camerasStorage = list
+    }
+    return NextResponse.json({ cameras: camerasStorage })
+  } catch {
+    console.error('Error fetching cameras from database')
+    return NextResponse.json({ cameras: camerasStorage })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -34,7 +44,10 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     }
 
+    // Persist to Supabase
+    await dbAddCamera(newCamera)
     camerasStorage.push(newCamera)
+
     return NextResponse.json({ success: true, camera: newCamera }, { status: 201 })
   } catch {
     console.error('Error adding camera')
@@ -45,14 +58,26 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { id, name, location, streamType, streamUrl, ipAddress, port, username, isOnline, aiDetectionEnabled, autoZoomPlate } = body
+    const {
+      id,
+      name,
+      location,
+      streamType,
+      streamUrl,
+      ipAddress,
+      port,
+      username,
+      isOnline,
+      aiDetectionEnabled,
+      autoZoomPlate,
+    } = body
 
     const index = camerasStorage.findIndex((c) => c.id === id)
     if (index === -1) {
       return NextResponse.json({ error: 'Không tìm thấy camera' }, { status: 404 })
     }
 
-    camerasStorage[index] = {
+    const updatedCamera: CameraConfig = {
       ...camerasStorage[index],
       name: name ? name.trim() : camerasStorage[index].name,
       location: location ? location.trim() : camerasStorage[index].location,
@@ -62,9 +87,14 @@ export async function PUT(req: NextRequest) {
       port: port ? Number(port) : camerasStorage[index].port,
       username: username !== undefined ? username.trim() : camerasStorage[index].username,
       isOnline: isOnline !== undefined ? isOnline : camerasStorage[index].isOnline,
-      aiDetectionEnabled: aiDetectionEnabled !== undefined ? aiDetectionEnabled : camerasStorage[index].aiDetectionEnabled,
+      aiDetectionEnabled:
+        aiDetectionEnabled !== undefined ? aiDetectionEnabled : camerasStorage[index].aiDetectionEnabled,
       autoZoomPlate: autoZoomPlate !== undefined ? autoZoomPlate : camerasStorage[index].autoZoomPlate,
     }
+
+    // Update in Supabase
+    await dbUpdateCamera(updatedCamera)
+    camerasStorage[index] = updatedCamera
 
     return NextResponse.json({ success: true, camera: camerasStorage[index] })
   } catch {

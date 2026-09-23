@@ -70,7 +70,7 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
         `"${l.matchedVehicle?.vehicleType || l.vehicleType}"`,
         `"${l.isMatch ? 'HỢP LỆ' : 'CẢNH BÁO XE LẠ'}"`,
         `"${l.confidence}%"`,
-      ].join(',')
+      ].join(','),
     )
 
     const csvContent = '\uFEFF' + [headers, ...rows].join('\n')
@@ -190,9 +190,7 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       {log.matchedVehicle?.vehicleType || log.vehicleType}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">
-                      {log.confidence}%
-                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">{log.confidence}%</td>
                     <td className="px-4 py-3.5">
                       {log.isMatch ? (
                         <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
@@ -239,9 +237,7 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
         {/* Mobile View */}
         <div className="block md:hidden divide-y divide-border">
           {filteredLogs.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm">
-              Chưa có lượt xe nào trong nhật ký
-            </div>
+            <div className="p-6 text-center text-muted-foreground text-sm">Chưa có lượt xe nào trong nhật ký</div>
           ) : (
             filteredLogs.map((log) => (
               <div key={log.id} className="p-3.5 flex flex-col gap-2">
@@ -266,9 +262,19 @@ export function DetectionLogs({ logs = [], onRefresh, onAddVehiclePrompt }: Dete
                 </div>
 
                 <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
-                  <div>Tài xế: <span className="text-foreground font-medium">{log.matchedVehicle?.driverName || 'Chưa đăng ký'}</span></div>
-                  <div>Phương tiện: <span className="text-foreground">{log.matchedVehicle?.vehicleType || log.vehicleType}</span></div>
-                  <div>Vị trí: <span className="text-foreground font-mono">{log.locationTag || 'CAN - KHU SUA CHUA'}</span></div>
+                  <div>
+                    Tài xế:{' '}
+                    <span className="text-foreground font-medium">
+                      {log.matchedVehicle?.driverName || 'Chưa đăng ký'}
+                    </span>
+                  </div>
+                  <div>
+                    Phương tiện:{' '}
+                    <span className="text-foreground">{log.matchedVehicle?.vehicleType || log.vehicleType}</span>
+                  </div>
+                  <div>
+                    Vị trí: <span className="text-foreground font-mono">{log.locationTag || 'CAN - KHU SUA CHUA'}</span>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/50">

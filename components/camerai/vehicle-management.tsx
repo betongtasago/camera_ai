@@ -193,7 +193,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
         `"${v.status === 'approved' ? 'Hợp lệ' : v.status === 'restricted' ? 'Tạm giữ' : 'Chặn'}"`,
         `"${v.notes || ''}"`,
         `"${new Date(v.registeredAt).toLocaleDateString('vi-VN')}"`,
-      ].join(',')
+      ].join(','),
     )
 
     const csvContent = '\uFEFF' + [headers, ...rows].join('\n')
@@ -296,15 +296,9 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                         {vehicle.plateNumber}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 font-medium text-foreground">
-                      {vehicle.driverName}
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {vehicle.vehicleType}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                      {vehicle.company}
-                    </td>
+                    <td className="px-4 py-3.5 font-medium text-foreground">{vehicle.driverName}</td>
+                    <td className="px-4 py-3.5 text-muted-foreground">{vehicle.vehicleType}</td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">{vehicle.company}</td>
                     <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
                       {vehicle.phoneNumber || '—'}
                     </td>
@@ -360,9 +354,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
         {/* Mobile Cards View - Explicitly Optimized for Touch Phones */}
         <div className="block md:hidden divide-y divide-border">
           {filteredVehicles.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm">
-              Không tìm thấy phương tiện nào
-            </div>
+            <div className="p-6 text-center text-muted-foreground text-sm">Không tìm thấy phương tiện nào</div>
           ) : (
             filteredVehicles.map((vehicle) => (
               <div key={vehicle.id} className="p-3.5 flex flex-col gap-2">
@@ -371,9 +363,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                     <div className="font-mono font-bold text-base text-foreground tracking-wide">
                       {vehicle.plateNumber}
                     </div>
-                    <div className="text-sm font-semibold text-foreground mt-0.5">
-                      {vehicle.driverName}
-                    </div>
+                    <div className="text-sm font-semibold text-foreground mt-0.5">{vehicle.driverName}</div>
                   </div>
                   <div>
                     {vehicle.status === 'approved' && (
@@ -395,9 +385,17 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
                 </div>
 
                 <div className="text-xs text-muted-foreground flex flex-col gap-1">
-                  <div>Loại xe: <span className="text-foreground">{vehicle.vehicleType}</span></div>
-                  <div>Đơn vị: <span className="text-foreground">{vehicle.company}</span></div>
-                  {vehicle.phoneNumber && <div>SĐT: <span className="text-foreground font-mono">{vehicle.phoneNumber}</span></div>}
+                  <div>
+                    Loại xe: <span className="text-foreground">{vehicle.vehicleType}</span>
+                  </div>
+                  <div>
+                    Đơn vị: <span className="text-foreground">{vehicle.company}</span>
+                  </div>
+                  {vehicle.phoneNumber && (
+                    <div>
+                      SĐT: <span className="text-foreground font-mono">{vehicle.phoneNumber}</span>
+                    </div>
+                  )}
                 </div>
 
                 {userRole === 'admin' && (
@@ -545,9 +543,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
-              <Button type="submit">
-                {isEditing ? 'Lưu thay đổi' : 'Xác nhận thêm xe'}
-              </Button>
+              <Button type="submit">{isEditing ? 'Lưu thay đổi' : 'Xác nhận thêm xe'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

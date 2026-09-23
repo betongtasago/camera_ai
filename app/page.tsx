@@ -240,9 +240,7 @@ export default function HomePage() {
                 className="h-9 text-xs px-2.5 sm:px-3 border-border bg-card"
               >
                 <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-                <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">
-                  {currentUser.name}
-                </span>
+                <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">{currentUser.name}</span>
                 <Badge
                   className={
                     currentUser.role === 'admin'
@@ -254,11 +252,7 @@ export default function HomePage() {
                 </Badge>
               </Button>
             ) : (
-              <Button
-                size="sm"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="h-9 text-xs font-semibold"
-              >
+              <Button size="sm" onClick={() => setIsAuthModalOpen(true)} className="h-9 text-xs font-semibold">
                 <LogIn className="w-3.5 h-3.5 mr-1.5" />
                 Đăng nhập
               </Button>
@@ -365,17 +359,13 @@ export default function HomePage() {
 
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Camera ghi nhận:</span>
-                      <span className="font-mono text-foreground font-semibold">
-                        {latestDetection.locationTag}
-                      </span>
+                      <span className="font-mono text-foreground font-semibold">{latestDetection.locationTag}</span>
                     </div>
 
                     <div className="flex justify-between py-1">
                       <span className="text-muted-foreground">Thời gian:</span>
                       <span className="font-mono text-muted-foreground" suppressHydrationWarning>
-                        {isMounted
-                          ? new Date(latestDetection.timestamp).toLocaleTimeString('vi-VN')
-                          : '16:36:08'}
+                        {isMounted ? new Date(latestDetection.timestamp).toLocaleTimeString('vi-VN') : '16:36:08'}
                       </span>
                     </div>
                   </div>

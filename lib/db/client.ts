@@ -6,10 +6,8 @@ function createMockChain(defaultResult: any = []): any {
   const chain: any = () => createMockChain(defaultResult)
   chain.then = (resolve?: (val: any) => any, reject?: (reason: any) => any) =>
     Promise.resolve(defaultResult).then(resolve, reject)
-  chain.catch = (reject?: (reason: any) => any) =>
-    Promise.resolve(defaultResult).catch(reject)
-  chain.finally = (callback?: () => void) =>
-    Promise.resolve(defaultResult).finally(callback)
+  chain.catch = (reject?: (reason: any) => any) => Promise.resolve(defaultResult).catch(reject)
+  chain.finally = (callback?: () => void) => Promise.resolve(defaultResult).finally(callback)
 
   return new Proxy(chain, {
     get(target, prop) {
@@ -24,25 +22,31 @@ function createMockChain(defaultResult: any = []): any {
   })
 }
 
-const mockDb: any = new Proxy({}, {
-  get(_target, prop) {
-    if (prop === 'transaction') {
-      return async (cb: (tx: any) => any) => cb(mockDb)
-    }
-    if (prop === 'query') {
-      return new Proxy({}, {
-        get() {
-          return {
-            findMany: async () => [],
-            findFirst: async () => null,
-            findUnique: async () => null,
-          }
-        },
-      })
-    }
-    return () => createMockChain([])
+const mockDb: any = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (prop === 'transaction') {
+        return async (cb: (tx: any) => any) => cb(mockDb)
+      }
+      if (prop === 'query') {
+        return new Proxy(
+          {},
+          {
+            get() {
+              return {
+                findMany: async () => [],
+                findFirst: async () => null,
+                findUnique: async () => null,
+              }
+            },
+          },
+        )
+      }
+      return () => createMockChain([])
+    },
   },
-})
+)
 
 let _db: any = null
 
@@ -56,8 +60,8 @@ function getDb() {
       try {
         const client = postgres(url)
         _db = drizzle(client, { schema })
-      } catch (err) {
-        console.warn('[AI Studio] Database connection error — using in-memory mock', err)
+      } catch {
+        console.warn('[AI Studio] Database connection error — using in-memory mock')
         _db = mockDb
       }
     }

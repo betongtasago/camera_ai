@@ -14,13 +14,7 @@ import {
   UserCheck,
   ShieldAlert,
 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -133,7 +127,8 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
                 </span>
               ) : (
                 <span>
-                  ✓ Bạn đang ở chế độ Giám sát: Có thể xem trực tiếp camera AI, đối soát xe vào cổng và phát lệnh mở Barie.
+                  ✓ Bạn đang ở chế độ Giám sát: Có thể xem trực tiếp camera AI, đối soát xe vào cổng và phát lệnh mở
+                  Barie.
                 </span>
               )}
             </div>
@@ -142,12 +137,7 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
               <Button variant="outline" onClick={onClose}>
                 Đóng
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleLogout}
-                disabled={isLoading}
-                className="gap-1.5"
-              >
+              <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="gap-1.5">
                 <LogOut className="w-4 h-4" />
                 Đăng Xuất
               </Button>

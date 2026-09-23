@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_EVENTS } from '@/lib/storage'
 import { DetectionResult } from '@/lib/types'
+import { dbGetDetectionLogs, dbAddDetectionLog } from '@/lib/supabase'
 
 let eventsStorage: DetectionResult[] = [...INITIAL_EVENTS]
 
@@ -9,7 +10,19 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get('q')?.toLowerCase() || ''
   const status = searchParams.get('status')
 
-  let list = [...eventsStorage]
+  let list: DetectionResult[] = []
+  try {
+    const dbLogs = await dbGetDetectionLogs()
+    if (dbLogs.length > 0) {
+      eventsStorage = dbLogs
+      list = dbLogs
+    } else {
+      list = [...eventsStorage]
+    }
+  } catch {
+    console.error('Error fetching detection events from database')
+    list = [...eventsStorage]
+  }
 
   if (query) {
     list = list.filter(
@@ -17,7 +30,7 @@ export async function GET(req: NextRequest) {
         e.plateNumber.toLowerCase().includes(query) ||
         e.cameraName.toLowerCase().includes(query) ||
         (e.matchedVehicle?.driverName && e.matchedVehicle.driverName.toLowerCase().includes(query)) ||
-        (e.matchedVehicle?.company && e.matchedVehicle.company.toLowerCase().includes(query))
+        (e.matchedVehicle?.company && e.matchedVehicle.company.toLowerCase().includes(query)),
     )
   }
 
@@ -36,10 +49,15 @@ export async function POST(req: NextRequest) {
       id: body.id || 'evt_' + Math.random().toString(36).substring(2, 9),
       timestamp: body.timestamp || new Date().toISOString(),
     }
+
+    // Persist to Supabase
+    await dbAddDetectionLog(newEvent)
+
     eventsStorage.unshift(newEvent)
     if (eventsStorage.length > 100) {
       eventsStorage = eventsStorage.slice(0, 100)
     }
+
     return NextResponse.json({ success: true, event: newEvent }, { status: 201 })
   } catch {
     console.error('Error recording event')

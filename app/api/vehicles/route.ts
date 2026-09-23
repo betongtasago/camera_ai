@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_VEHICLES } from '@/lib/storage'
 import { Vehicle } from '@/lib/types'
+import { dbGetVehicles, dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
 
-// In-memory store for fleet
+// In-memory cache for fallback
 let fleetStorage: Vehicle[] = [...INITIAL_VEHICLES]
 
 export async function GET(req: NextRequest) {
@@ -10,7 +11,19 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get('q')?.toLowerCase() || ''
   const status = searchParams.get('status')
 
-  let results = [...fleetStorage]
+  // Load from Supabase (or fallback)
+  let results: Vehicle[] = []
+  try {
+    results = await dbGetVehicles()
+    if (results.length > 0) {
+      fleetStorage = results
+    } else {
+      results = [...fleetStorage]
+    }
+  } catch {
+    console.error('Error retrieving vehicles from database')
+    results = [...fleetStorage]
+  }
 
   if (query) {
     results = results.filter(
@@ -18,7 +31,7 @@ export async function GET(req: NextRequest) {
         v.plateNumber.toLowerCase().includes(query) ||
         v.driverName.toLowerCase().includes(query) ||
         v.vehicleType.toLowerCase().includes(query) ||
-        v.company.toLowerCase().includes(query)
+        v.company.toLowerCase().includes(query),
     )
   }
 
@@ -35,22 +48,18 @@ export async function POST(req: NextRequest) {
     const { plateNumber, driverName, vehicleType, company, phoneNumber, status, notes } = body
 
     if (!plateNumber || !driverName || !vehicleType) {
-      return NextResponse.json(
-        { error: 'Vui lòng điền đầy đủ: Biển số xe, Tên tài xế, và Loại xe' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Vui lòng điền đầy đủ: Biển số xe, Tên tài xế, và Loại xe' }, { status: 400 })
     }
 
     // Standardize plate number (e.g., 51N-043.57)
     const normalizedPlate = plateNumber.trim().toUpperCase()
 
     // Check duplicate
-    const existing = fleetStorage.find((v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === normalizedPlate.replace(/[^A-Z0-9]/g, ''))
+    const existing = fleetStorage.find(
+      (v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === normalizedPlate.replace(/[^A-Z0-9]/g, ''),
+    )
     if (existing) {
-      return NextResponse.json(
-        { error: `Biển số xe ${normalizedPlate} đã tồn tại trong danh mục!` },
-        { status: 409 }
-      )
+      return NextResponse.json({ error: `Biển số xe ${normalizedPlate} đã tồn tại trong danh mục!` }, { status: 409 })
     }
 
     const newVehicle: Vehicle = {
@@ -65,6 +74,8 @@ export async function POST(req: NextRequest) {
       registeredAt: new Date().toISOString(),
     }
 
+    // Persist to Supabase and update local cache
+    await dbAddVehicle(newVehicle)
     fleetStorage.unshift(newVehicle)
 
     return NextResponse.json({ success: true, vehicle: newVehicle }, { status: 201 })
@@ -88,7 +99,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Không tìm thấy xe trong danh mục' }, { status: 404 })
     }
 
-    fleetStorage[index] = {
+    const updatedVehicle: Vehicle = {
       ...fleetStorage[index],
       plateNumber: plateNumber ? plateNumber.trim().toUpperCase() : fleetStorage[index].plateNumber,
       driverName: driverName ? driverName.trim() : fleetStorage[index].driverName,
@@ -98,6 +109,10 @@ export async function PUT(req: NextRequest) {
       status: status || fleetStorage[index].status,
       notes: notes !== undefined ? notes.trim() : fleetStorage[index].notes,
     }
+
+    // Update in Supabase and cache
+    await dbUpdateVehicle(updatedVehicle)
+    fleetStorage[index] = updatedVehicle
 
     return NextResponse.json({ success: true, vehicle: fleetStorage[index] })
   } catch {
@@ -115,6 +130,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Thiếu ID xe cần xóa' }, { status: 400 })
     }
 
+    // Delete in Supabase and cache
+    await dbDeleteVehicle(id)
     fleetStorage = fleetStorage.filter((v) => v.id !== id)
 
     return NextResponse.json({ success: true, message: 'Đã xóa xe khỏi danh mục' })

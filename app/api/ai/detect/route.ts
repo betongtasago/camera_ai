@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { INITIAL_VEHICLES } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
+import { dbGetVehicles, dbAddDetectionLog } from '@/lib/supabase'
 
 // In-memory detection events
 let eventLogs: DetectionResult[] = []
@@ -25,10 +26,7 @@ export async function POST(req: NextRequest) {
     // If real Gemini API Key is available and valid, and an imageBase64 was provided
     const geminiKey = process.env.GEMINI_API_KEY?.trim()
     const isUsableKey = Boolean(
-      geminiKey &&
-      geminiKey.length >= 30 &&
-      !geminiKey.startsWith('your_') &&
-      !geminiKey.includes('placeholder')
+      geminiKey && geminiKey.length >= 30 && !geminiKey.startsWith('your_') && !geminiKey.includes('placeholder'),
     )
 
     if (isUsableKey && imageBase64 && imageBase64.length > 500) {
@@ -62,7 +60,10 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
         })
 
         const textOutput = response.text || ''
-        const cleanJsonStr = textOutput.replace(/```json/g, '').replace(/```/g, '').trim()
+        const cleanJsonStr = textOutput
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim()
         const parsed = JSON.parse(cleanJsonStr)
 
         if (parsed.plateNumber) {
@@ -88,17 +89,10 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       }
     }
 
-    // Check against registered vehicles
-    // Fetch registered fleet from vehicle endpoint or initial
+    // Check against registered vehicles from Supabase
     let fleet: Vehicle[] = [...INITIAL_VEHICLES]
     try {
-      const fleetRes = await fetch(new URL('/api/vehicles', req.url))
-      if (fleetRes.ok) {
-        const fleetData = await fleetRes.json()
-        if (fleetData?.vehicles?.length) {
-          fleet = fleetData.vehicles
-        }
-      }
+      fleet = await dbGetVehicles()
     } catch {
       fleet = [...INITIAL_VEHICLES]
     }
@@ -120,11 +114,13 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       status: matched ? (matched.status === 'approved' ? 'passed' : 'restricted') : 'warning',
       details: {
         brand: matched?.company || brand,
-        speedEstimate: (12 + Math.floor(Math.random() * 8)) + ' km/h',
+        speedEstimate: 12 + Math.floor(Math.random() * 8) + ' km/h',
       },
     }
 
-    // Record in memory event logs
+    // Persist detection log to Supabase and cache
+    await dbAddDetectionLog(eventResult)
+
     eventLogs.unshift(eventResult)
     if (eventLogs.length > 50) {
       eventLogs = eventLogs.slice(0, 50)
