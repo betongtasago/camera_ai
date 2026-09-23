@@ -94,9 +94,7 @@ export async function POST(req: NextRequest) {
 
     // Check duplicate in current memory
     const currentList = getGlobalVehicles()
-    const existing = currentList.find(
-      (v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlateNumber,
-    )
+    const existing = currentList.find((v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlateNumber)
     if (existing) {
       return NextResponse.json({ error: `Biển số xe ${normalizedPlate} đã tồn tại trong danh mục!` }, { status: 409 })
     }
@@ -146,7 +144,12 @@ export async function PUT(req: NextRequest) {
 
     const currentList = getGlobalVehicles()
     const targetId = id || ''
-    const cleanPlate = plateNumber ? plateNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+    const cleanPlate = plateNumber
+      ? plateNumber
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+      : ''
 
     const existing = currentList.find(
       (v) => v.id === targetId || (cleanPlate && v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanPlate),
@@ -158,7 +161,8 @@ export async function PUT(req: NextRequest) {
       driverName: driverName !== undefined ? driverName.trim() : existing?.driverName || '',
       vehicleType: vehicleType !== undefined ? vehicleType.trim() : existing?.vehicleType || '',
       company: company !== undefined ? company.trim() : existing?.company || '',
-      status: status === 'blacklisted' ? 'blacklisted' : existing?.status === 'blacklisted' ? 'blacklisted' : 'approved',
+      status:
+        status === 'blacklisted' ? 'blacklisted' : existing?.status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: notes !== undefined ? notes.trim() : existing?.notes || '',
       registeredAt: existing?.registeredAt || new Date().toISOString(),
     }

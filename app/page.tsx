@@ -419,11 +419,7 @@ export default function HomePage() {
                           : 'ml-1.5 bg-sky-500/15 text-sky-500 border-sky-500/20 text-[9px] px-1 py-0'
                     }
                   >
-                    {currentUser.role === 'admin'
-                      ? 'ADMIN'
-                      : currentUser.role === 'operator'
-                        ? 'OPERATOR'
-                        : 'MEMBER'}
+                    {currentUser.role === 'admin' ? 'ADMIN' : currentUser.role === 'operator' ? 'OPERATOR' : 'MEMBER'}
                   </Badge>
                 </Button>
 
@@ -468,13 +464,15 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Live Camera Video / Simulation with AI Overlay */}
               <div className="lg:col-span-8 flex flex-col gap-3">
-                {isAdmin && <CameraLiveFeed
-                  currentCamera={currentCamera}
-                  onDetectionTriggered={handleDetectionTriggered}
-                  userRole={currentUser?.role}
-                  telegramAutoNotify={telegramAutoNotify}
-                  onToggleTelegramAutoNotify={handleToggleTelegramAutoNotify}
-                />}
+                {isAdmin && (
+                  <CameraLiveFeed
+                    currentCamera={currentCamera}
+                    onDetectionTriggered={handleDetectionTriggered}
+                    userRole={currentUser?.role}
+                    telegramAutoNotify={telegramAutoNotify}
+                    onToggleTelegramAutoNotify={handleToggleTelegramAutoNotify}
+                  />
+                )}
               </div>
 
               {/* Right Column: Live Detection & Fleet Verification Inspector */}
@@ -549,7 +547,15 @@ export default function HomePage() {
                     <div className="flex justify-between py-1">
                       <span className="text-muted-foreground">Thời gian:</span>
                       <span className="font-mono text-muted-foreground" suppressHydrationWarning>
-                        {isMounted ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(latestDetection.timestamp)) : '--:--:--'}
+                        {isMounted
+                          ? new Intl.DateTimeFormat('vi-VN', {
+                              timeZone: 'Etc/GMT-8',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false,
+                            }).format(new Date(latestDetection.timestamp))
+                          : '--:--:--'}
                       </span>
                     </div>
                   </div>
@@ -561,9 +567,7 @@ export default function HomePage() {
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                            telegramAutoNotify
-                              ? 'bg-sky-500/20 text-sky-500'
-                              : 'bg-muted text-muted-foreground'
+                            telegramAutoNotify ? 'bg-sky-500/20 text-sky-500' : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           <Send className={`w-3.5 h-3.5 ${telegramAutoNotify ? 'animate-pulse' : ''}`} />
@@ -571,9 +575,7 @@ export default function HomePage() {
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground">Tự động báo Telegram</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {telegramAutoNotify
-                              ? 'Đang BẬT: Báo bot khi có xe'
-                              : 'Đang TẮT: Bấm nút để gửi thủ công'}
+                            {telegramAutoNotify ? 'Đang BẬT: Báo bot khi có xe' : 'Đang TẮT: Bấm nút để gửi thủ công'}
                           </span>
                         </div>
                       </div>
@@ -602,13 +604,15 @@ export default function HomePage() {
                       </Button>
                     </div>
 
-                    {isAdmin && <Button
-                      onClick={handleSendTelegram}
-                      className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      GỬI BÁO CÁO QUA TELEGRAM
-                    </Button>}
+                    {isAdmin && (
+                      <Button
+                        onClick={handleSendTelegram}
+                        className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        GỬI BÁO CÁO QUA TELEGRAM
+                      </Button>
+                    )}
 
                     {!latestDetection.isMatch && !isMember && (
                       <Button

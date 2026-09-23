@@ -4,14 +4,26 @@ import { getGlobalVehicles, addGlobalLog, getGlobalLogs, getGlobalCameras } from
 import { DetectionResult, Vehicle } from '@/lib/types'
 import { dbAddDetectionLog } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Bạn cần đăng nhập để sử dụng nhận diện AI' }, { status: 401 })
+    }
+
     const body = await req.json()
+    if (typeof body.imageBase64 === 'string' && body.imageBase64.length > 12_000_000) {
+      return NextResponse.json({ error: 'Ảnh vượt quá dung lượng cho phép' }, { status: 413 })
+    }
     const requestedCameraId = body.cameraId as string | undefined
     const camera = getGlobalCameras().find((item) => item.id === requestedCameraId)
     if (!camera || camera.isOnline !== true) {
-      return NextResponse.json({ error: 'Không có tín hiệu camera thực tế. Vui lòng kiểm tra kết nối trong Cấu hình camera.' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Không có tín hiệu camera thực tế. Vui lòng kiểm tra kết nối trong Cấu hình camera.' },
+        { status: 409 },
+      )
     }
     const { imageBase64, cameraId, cameraName, locationTag, simulatedPlate } = body
 
@@ -146,6 +158,11 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
 }
 
 export async function GET() {
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Bạn cần đăng nhập' }, { status: 401 })
+  }
+
   const logs = getGlobalLogs()
   return NextResponse.json({ logs })
 }

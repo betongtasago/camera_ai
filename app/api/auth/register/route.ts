@@ -13,10 +13,7 @@ export async function POST(req: NextRequest) {
     const { name, email, password } = await req.json()
 
     if (!name?.trim() || !email?.trim() || !password) {
-      return NextResponse.json(
-        { error: 'Vui lòng điền đầy đủ Họ tên, Email và Mật khẩu' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Vui lòng điền đầy đủ Họ tên, Email và Mật khẩu' }, { status: 400 })
     }
 
     const cleanEmail = email.trim().toLowerCase()
@@ -35,10 +32,7 @@ export async function POST(req: NextRequest) {
     const existsInRegistered = getRegisteredUsers().some((u) => u.email.toLowerCase() === cleanEmail)
 
     if (existsInDefault || existsInRegistered) {
-      return NextResponse.json(
-        { error: 'Email này đã được đăng ký tài khoản trong hệ thống' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Email này đã được đăng ký tài khoản trong hệ thống' }, { status: 400 })
     }
 
     const salt = 'salt_' + Math.random().toString(36).substring(2, 10)

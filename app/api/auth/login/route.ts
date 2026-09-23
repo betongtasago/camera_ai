@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  createSessionToken,
-  COOKIE_NAME,
-  DEFAULT_USERS,
-  getRegisteredUsers,
-  hashPassword,
-} from '@/lib/auth'
+import { createSessionToken, COOKIE_NAME, DEFAULT_USERS, getRegisteredUsers, hashPassword } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,11 +15,7 @@ export async function POST(req: NextRequest) {
     const defaultUserFound = DEFAULT_USERS.find((u) => u.email.toLowerCase() === cleanEmail)
     if (defaultUserFound) {
       const computedHash = await hashPassword(password, defaultUserFound.salt)
-      const isValid =
-        computedHash === defaultUserFound.passwordHash ||
-        (cleanEmail === 'admin@camerai.vn' && password === 'Admin@123456') ||
-        (cleanEmail === 'operator@camerai.vn' && password === 'Operator@123456') ||
-        (cleanEmail === 'member@camerai.vn' && password === 'Member@123456')
+      const isValid = computedHash === defaultUserFound.passwordHash
 
       if (!isValid) {
         return NextResponse.json({ error: 'Mật khẩu không chính xác' }, { status: 401 })
@@ -54,9 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Check dynamically registered members
-    const registeredUserFound = getRegisteredUsers().find(
-      (u) => u.email.toLowerCase() === cleanEmail,
-    )
+    const registeredUserFound = getRegisteredUsers().find((u) => u.email.toLowerCase() === cleanEmail)
     if (registeredUserFound) {
       const computedHash = await hashPassword(password, registeredUserFound.salt)
       if (computedHash !== registeredUserFound.passwordHash) {
@@ -73,38 +61,6 @@ export async function POST(req: NextRequest) {
 
       const token = await createSessionToken(publicUser)
       const response = NextResponse.json({ success: true, user: publicUser })
-
-      response.cookies.set(COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60,
-      })
-
-      return response
-    }
-
-    // 3. Fallback for valid new email
-    if (cleanEmail.includes('@') && password.length >= 6) {
-      const isNewAdmin = cleanEmail.includes('admin')
-      const isOperator = cleanEmail.includes('operator')
-      const role = isNewAdmin ? 'admin' : isOperator ? 'operator' : 'member'
-      const dynamicUser = {
-        id: 'usr_' + Math.random().toString(36).substring(2, 9),
-        email: cleanEmail,
-        name: isNewAdmin
-          ? 'Quản Trị Viên'
-          : isOperator
-            ? 'Nhân Viên Giám Sát'
-            : 'Thành viên Xem Camera',
-        role: role as 'admin' | 'operator' | 'member',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      }
-
-      const token = await createSessionToken(dynamicUser)
-      const response = NextResponse.json({ success: true, user: dynamicUser })
 
       response.cookies.set(COOKIE_NAME, token, {
         httpOnly: true,

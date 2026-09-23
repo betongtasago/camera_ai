@@ -10,9 +10,7 @@ export async function GET(req: NextRequest) {
     start(controller) {
       // Send initial connect frame
       try {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'init', timestamp: Date.now() })}\n\n`),
-        )
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'init', timestamp: Date.now() })}\n\n`))
       } catch {
         // Stream aborted immediately
         return
@@ -21,9 +19,7 @@ export async function GET(req: NextRequest) {
       // Keepalive heartbeat ping every 15 seconds
       const pingInterval = setInterval(() => {
         try {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`),
-          )
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`))
         } catch {
           clearInterval(pingInterval)
         }

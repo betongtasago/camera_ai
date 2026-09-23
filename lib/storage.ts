@@ -160,7 +160,12 @@ export function updateGlobalVehicle(vehicle: Vehicle): Vehicle | null {
 export function deleteGlobalVehicle(idOrPlate: string): boolean {
   const current = getGlobalVehicles()
   const initialLen = current.length
-  const cleanTarget = idOrPlate ? idOrPlate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+  const cleanTarget = idOrPlate
+    ? idOrPlate
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+    : ''
   globalThis.__cameraiVehicles = current.filter((v) => {
     if (v.id === idOrPlate) return false
     if (v.plateNumber === idOrPlate) return false

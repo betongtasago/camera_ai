@@ -48,13 +48,18 @@ export function DetectionLogs({
   const [isDeleting, setIsDeleting] = useState(false)
   const [logToDelete, setLogToDelete] = useState<DetectionResult | null>(null)
 
-  const filteredLogs = useMemo(() => logs.filter((log) => {
-    if (filter === 'passed' && !log.isMatch) return false
-    if (filter === 'warning' && log.isMatch) return false
-    if (fromDate && new Date(log.timestamp).getTime() < new Date(`${fromDate}T00:00:00+08:00`).getTime()) return false
-    if (toDate && new Date(log.timestamp).getTime() > new Date(`${toDate}T23:59:59+08:00`).getTime()) return false
-    return true
-  }), [logs, filter, fromDate, toDate])
+  const filteredLogs = useMemo(
+    () =>
+      logs.filter((log) => {
+        if (filter === 'passed' && !log.isMatch) return false
+        if (filter === 'warning' && log.isMatch) return false
+        if (fromDate && new Date(log.timestamp).getTime() < new Date(`${fromDate}T00:00:00+08:00`).getTime())
+          return false
+        if (toDate && new Date(log.timestamp).getTime() > new Date(`${toDate}T23:59:59+08:00`).getTime()) return false
+        return true
+      }),
+    [logs, filter, fromDate, toDate],
+  )
 
   const handleSendTelegram = async (log: DetectionResult) => {
     try {
@@ -160,9 +165,7 @@ export function DetectionLogs({
             <button
               onClick={() => setFilter('all')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'all'
-                  ? 'bg-background shadow-xs font-semibold text-foreground'
-                  : 'text-muted-foreground'
+                filter === 'all' ? 'bg-background shadow-xs font-semibold text-foreground' : 'text-muted-foreground'
               }`}
             >
               Tất cả ({logs.length})
@@ -170,9 +173,7 @@ export function DetectionLogs({
             <button
               onClick={() => setFilter('passed')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'passed'
-                  ? 'bg-background shadow-xs font-semibold text-emerald-500'
-                  : 'text-muted-foreground'
+                filter === 'passed' ? 'bg-background shadow-xs font-semibold text-emerald-500' : 'text-muted-foreground'
               }`}
             >
               Hợp lệ
@@ -180,9 +181,7 @@ export function DetectionLogs({
             <button
               onClick={() => setFilter('warning')}
               className={`px-2.5 py-1 rounded transition-colors ${
-                filter === 'warning'
-                  ? 'bg-background shadow-xs font-semibold text-amber-500'
-                  : 'text-muted-foreground'
+                filter === 'warning' ? 'bg-background shadow-xs font-semibold text-amber-500' : 'text-muted-foreground'
               }`}
             >
               Xe lạ
@@ -208,13 +207,7 @@ export function DetectionLogs({
           )}
 
           {onRefresh && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRefresh}
-              className="h-9 w-9"
-              title="Tải lại nhật ký"
-            >
+            <Button variant="ghost" size="icon" onClick={onRefresh} className="h-9 w-9" title="Tải lại nhật ký">
               <RefreshCw className="w-4 h-4" />
             </Button>
           )}
@@ -251,7 +244,13 @@ export function DetectionLogs({
                     <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
                       <div className="flex items-center gap-1.5" suppressHydrationWarning>
                         <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                        {new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(log.timestamp))}
+                        {new Intl.DateTimeFormat('vi-VN', {
+                          timeZone: 'Etc/GMT-8',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false,
+                        }).format(new Date(log.timestamp))}
                       </div>
                     </td>
                     <td className="px-4 py-3.5 font-mono text-xs text-foreground font-semibold">
@@ -274,9 +273,7 @@ export function DetectionLogs({
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       {log.matchedVehicle?.vehicleType || log.vehicleType}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">
-                      {log.confidence}%
-                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-emerald-500 font-semibold">{log.confidence}%</td>
                     <td className="px-4 py-3.5">
                       {log.isMatch ? (
                         <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">

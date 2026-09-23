@@ -195,9 +195,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <div>
               {/* Card Title */}
               <div className="text-center space-y-1.5 mb-5">
-                <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                  Đăng Nhập Hệ Thống
-                </h1>
+                <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Đăng Nhập Hệ Thống</h1>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   Đăng nhập tài khoản để giám sát camera AI hoặc xem luồng trực tiếp
                 </p>
@@ -314,13 +312,17 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     Tài khoản mặc định:
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span>• <strong>Admin:</strong> admin@camerai.vn</span>
+                    <span>
+                      • <strong>Admin:</strong> admin@camerai.vn
+                    </span>
                     <code className="bg-background px-1.5 py-0.5 rounded border border-border font-mono text-primary font-bold">
                       Admin@123456
                     </code>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span>• <strong>Member:</strong> member@camerai.vn</span>
+                    <span>
+                      • <strong>Member:</strong> member@camerai.vn
+                    </span>
                     <code className="bg-background px-1.5 py-0.5 rounded border border-border font-mono text-sky-500 font-bold">
                       Member@123456
                     </code>
@@ -344,9 +346,9 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl text-xs text-foreground flex items-start gap-2.5 mb-4">
                 <Info className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">
-                  <strong className="text-sky-500">Quyền hạn Thành viên:</strong> Được cấp quyền theo dõi luồng
-                  video camera trực tiếp và thông tin nhận diện xe. Các khu vực quản trị danh mục xe, lịch sử và cài
-                  đặt hệ thống sẽ được ẩn an toàn.
+                  <strong className="text-sky-500">Quyền hạn Thành viên:</strong> Được cấp quyền theo dõi luồng video
+                  camera trực tiếp và thông tin nhận diện xe. Các khu vực quản trị danh mục xe, lịch sử và cài đặt hệ
+                  thống sẽ được ẩn an toàn.
                 </div>
               </div>
 

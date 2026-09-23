@@ -336,8 +336,7 @@ export function VehicleManagement({
 
       const parsedVehicles: Partial<Vehicle>[] = []
       // Skip header if it has headers
-      const startIndex =
-        lines[0].toLowerCase().includes('biển') || lines[0].toLowerCase().includes('plate') ? 1 : 0
+      const startIndex = lines[0].toLowerCase().includes('biển') || lines[0].toLowerCase().includes('plate') ? 1 : 0
 
       for (let i = startIndex; i < lines.length; i++) {
         const parts = lines[i].split(',').map((p) => p.replace(/^"|"$/g, '').trim())
@@ -407,13 +406,7 @@ export function VehicleManagement({
   return (
     <div className="flex flex-col gap-4">
       {/* Hidden file input for import */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept=".csv,.txt"
-        onChange={handleFileImport}
-        className="hidden"
-      />
+      <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileImport} className="hidden" />
 
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-xs">
@@ -529,7 +522,9 @@ export function VehicleManagement({
               {filteredVehicles.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                    {searchQuery ? 'Không tìm thấy xe nào khớp với từ khóa tìm kiếm' : 'Chưa có phương tiện nào trong danh mục'}
+                    {searchQuery
+                      ? 'Không tìm thấy xe nào khớp với từ khóa tìm kiếm'
+                      : 'Chưa có phương tiện nào trong danh mục'}
                   </td>
                 </tr>
               ) : (
@@ -665,9 +660,7 @@ export function VehicleManagement({
                         type="button"
                         onClick={() => handleQuickStatusChange(vehicle, 'approved')}
                         className={`text-[10px] px-2 py-1 rounded font-semibold ${
-                          vehicle.status === 'approved'
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-muted text-muted-foreground'
+                          vehicle.status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         Cho qua
@@ -676,9 +669,7 @@ export function VehicleManagement({
                         type="button"
                         onClick={() => handleQuickStatusChange(vehicle, 'blacklisted')}
                         className={`text-[10px] px-2 py-1 rounded font-semibold ${
-                          vehicle.status === 'blacklisted'
-                            ? 'bg-red-500 text-white'
-                            : 'bg-muted text-muted-foreground'
+                          vehicle.status === 'blacklisted' ? 'bg-red-500 text-white' : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         Chặn
@@ -781,7 +772,6 @@ export function VehicleManagement({
                   className="text-sm"
                 />
               </div>
-
             </div>
 
             <div className="space-y-1.5">
@@ -862,20 +852,10 @@ export function VehicleManagement({
           )}
 
           <DialogFooter className="pt-3 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setVehicleToDelete(null)}
-              disabled={isDeleting}
-            >
+            <Button type="button" variant="outline" onClick={() => setVehicleToDelete(null)} disabled={isDeleting}>
               Hủy bỏ
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleExecuteDelete}
-              disabled={isDeleting}
-            >
+            <Button type="button" variant="destructive" onClick={handleExecuteDelete} disabled={isDeleting}>
               {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
               Xác nhận xóa vĩnh viễn
             </Button>

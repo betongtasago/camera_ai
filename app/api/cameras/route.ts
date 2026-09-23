@@ -107,9 +107,7 @@ export async function PUT(req: NextRequest) {
       port: port ? Number(port) : existing?.port || 554,
       username: username !== undefined ? username.trim() : existing?.username || 'admin',
       password:
-        password !== undefined && password.trim() && password !== '••••••••'
-          ? password.trim()
-          : existing?.password,
+        password !== undefined && password.trim() && password !== '••••••••' ? password.trim() : existing?.password,
       isOnline: isOnline !== undefined ? isOnline : existing?.isOnline === true,
       aiDetectionEnabled:
         aiDetectionEnabled !== undefined ? aiDetectionEnabled : existing?.aiDetectionEnabled !== false,

@@ -35,10 +35,7 @@ export async function POST(req: NextRequest) {
     const type = streamType || 'rtsp'
 
     if (!targetIp) {
-      return NextResponse.json(
-        { success: false, error: 'Chưa nhập địa chỉ IP của Camera' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: 'Chưa nhập địa chỉ IP của Camera' }, { status: 400 })
     }
 
     // Diagnostic validation: IP format
@@ -66,12 +63,25 @@ export async function POST(req: NextRequest) {
         broadcastRealtime({ type: 'cameras_updated', camera: existing, timestamp: Date.now() })
       }
       return NextResponse.json(
-        { success: false, error: 'Không nhận được tín hiệu camera tại ' + targetIp + ':' + targetPort + '. Hãy kiểm tra IP, cổng RTSP và nguồn điện mạng.' },
+        {
+          success: false,
+          error:
+            'Không nhận được tín hiệu camera tại ' +
+            targetIp +
+            ':' +
+            targetPort +
+            '. Hãy kiểm tra IP, cổng RTSP và nguồn điện mạng.',
+        },
         { status: 502 },
       )
     }
     if (body.id) {
-      const updated = { ...body, isOnline: true, streamUrl: body.streamUrl || undefined, createdAt: body.createdAt || new Date().toISOString() }
+      const updated = {
+        ...body,
+        isOnline: true,
+        streamUrl: body.streamUrl || undefined,
+        createdAt: body.createdAt || new Date().toISOString(),
+      }
       updateGlobalCamera(updated)
       await dbUpdateCamera(updated)
       broadcastRealtime({ type: 'cameras_updated', camera: updated, timestamp: Date.now() })
@@ -79,8 +89,7 @@ export async function POST(req: NextRequest) {
 
     // Construct standard RTSP URL if not provided
     const resolvedStreamUrl =
-      streamUrl?.trim() ||
-      `rtsp://${username || 'admin'}:••••••••@${targetIp}:${targetPort}/Streaming/Channels/101`
+      streamUrl?.trim() || `rtsp://${username || 'admin'}:••••••••@${targetIp}:${targetPort}/Streaming/Channels/101`
 
     return NextResponse.json({
       success: true,
@@ -99,9 +108,6 @@ export async function POST(req: NextRequest) {
     })
   } catch {
     console.error('Error testing camera connection')
-    return NextResponse.json(
-      { success: false, error: 'Không thể kết nối đến camera IP' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: 'Không thể kết nối đến camera IP' }, { status: 500 })
   }
 }

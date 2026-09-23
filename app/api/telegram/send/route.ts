@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Thiếu dữ liệu xe nhận diện' }, { status: 400 })
     }
 
-    const timeStr = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(det.timestamp || new Date()))
+    const timeStr = new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'Etc/GMT-8',
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    }).format(new Date(det.timestamp || new Date()))
     const matchStatus = det.isMatch ? '✅ *XE ĐÃ ĐĂNG KÝ*' : '⚠️ *XE NGOÀI DANH MỤC*'
 
     const messageText = [
