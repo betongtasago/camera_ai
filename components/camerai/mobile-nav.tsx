@@ -26,7 +26,7 @@ export function MobileNav({ activeTab, onTabChange, onOpenAuth, userRole, isLogg
       ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border px-2 py-1.5 shadow-lg safe-area-inset-bottom">
+    <nav className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-card/95 backdrop-blur-lg border-t border-border px-1.5 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] shadow-lg">
       <div className={`grid ${isMember ? 'grid-cols-2' : 'grid-cols-4'} gap-1`}>
         {navItems.map((item) => {
           const Icon = item.icon
@@ -41,7 +41,7 @@ export function MobileNav({ activeTab, onTabChange, onOpenAuth, userRole, isLogg
                   onTabChange(item.id)
                 }
               }}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all ${
+              className={`flex min-h-11 flex-col items-center justify-center py-1 px-1 rounded-xl transition-all ${
                 isActive ? 'text-primary font-bold bg-primary/10' : 'text-muted-foreground hover:text-foreground'
               }`}
             >

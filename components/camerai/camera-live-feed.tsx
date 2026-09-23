@@ -741,7 +741,7 @@ export function CameraLiveFeed({
       {/* CCTV Viewport Container */}
       <div
         ref={containerRef}
-        className="relative w-full aspect-[16/9] bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
+        className="relative w-full min-w-0 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
       >
         {/* Real Canvas Stream */}
         {!useWebcam ? (
