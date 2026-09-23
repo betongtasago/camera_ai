@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_CAMERAS } from '@/lib/storage'
 import { CameraConfig } from '@/lib/types'
 import { dbGetCameras, dbAddCamera, dbUpdateCamera } from '@/lib/supabase'
+import { broadcastRealtime } from '@/lib/realtime'
 
 let camerasStorage: CameraConfig[] = [...INITIAL_CAMERAS]
 
@@ -47,6 +48,13 @@ export async function POST(req: NextRequest) {
     // Persist to Supabase
     await dbAddCamera(newCamera)
     camerasStorage.push(newCamera)
+
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'cameras_updated',
+      camera: newCamera,
+      timestamp: Date.now(),
+    })
 
     return NextResponse.json({ success: true, camera: newCamera }, { status: 201 })
   } catch {
@@ -95,6 +103,13 @@ export async function PUT(req: NextRequest) {
     // Update in Supabase
     await dbUpdateCamera(updatedCamera)
     camerasStorage[index] = updatedCamera
+
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'cameras_updated',
+      camera: updatedCamera,
+      timestamp: Date.now(),
+    })
 
     return NextResponse.json({ success: true, camera: camerasStorage[index] })
   } catch {

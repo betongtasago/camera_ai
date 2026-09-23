@@ -31,6 +31,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Vehicle, UserRole } from '@/lib/types'
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync'
 import { toast } from 'sonner'
 
 interface VehicleManagementProps {
@@ -59,8 +60,8 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
   })
 
   // Fetch vehicles
-  const fetchVehicles = useCallback(async () => {
-    setIsLoading(true)
+  const fetchVehicles = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true)
     try {
       const res = await fetch('/api/vehicles')
       if (res.ok) {
@@ -70,11 +71,30 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       }
     } catch {
       console.error('Error fetching vehicles')
-      toast.error('Không thể tải danh mục xe')
+      if (!isSilent) toast.error('Không thể tải danh mục xe')
     } finally {
-      setIsLoading(false)
+      if (!isSilent) setIsLoading(false)
     }
   }, [onFleetUpdated])
+
+  // Real-time synchronization across all browser tabs and external sessions
+  const { status: syncStatus, broadcastLocally } = useRealtimeSync({
+    onVehiclesUpdated: (msg) => {
+      fetchVehicles(true)
+      if (msg.type === 'vehicles_updated') {
+        if (msg.action === 'create') {
+          toast.info('Hệ thống vừa cập nhật thêm xe mới vào danh mục (đồng bộ tức thời)')
+        } else if (msg.action === 'update') {
+          toast.info('Thông tin xe vừa được quản trị viên cập nhật (đồng bộ tức thời)')
+        } else if (msg.action === 'delete') {
+          toast.info('Một xe vừa được gỡ khỏi danh mục (đồng bộ tức thời)')
+        }
+      }
+    },
+    onFullSyncRequired: () => {
+      fetchVehicles(true)
+    },
+  })
 
   useEffect(() => {
     fetchVehicles()
@@ -150,6 +170,11 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
         toast.success(isEditing ? 'Cập nhật xe thành công' : 'Đã thêm xe mới vào danh mục')
         setIsModalOpen(false)
         fetchVehicles()
+        broadcastLocally({
+          type: 'vehicles_updated',
+          action: isEditing ? 'update' : 'create',
+          timestamp: Date.now(),
+        })
       } else {
         toast.error(result.error || 'Có lỗi xảy ra')
       }
@@ -166,6 +191,12 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       if (res.ok) {
         toast.success(`Đã xóa xe ${plate}`)
         fetchVehicles()
+        broadcastLocally({
+          type: 'vehicles_updated',
+          action: 'delete',
+          vehicleId: id,
+          timestamp: Date.now(),
+        })
       } else {
         toast.error('Không thể xóa xe')
       }
@@ -210,9 +241,16 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Truck className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-bold">Danh Mục Xe Đăng Ký (Fleet Registry)</h2>
+            <Badge
+              variant="outline"
+              className="text-[10px] font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 flex items-center gap-1 py-0.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              ĐỒNG BỘ TỨC THỜI (REALTIME)
+            </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Dữ liệu đối soát tự động khi Camera AI quét và zoom biển số xe vào cổng
@@ -258,7 +296,7 @@ export function VehicleManagement({ userRole = 'admin', onFleetUpdated }: Vehicl
             <option value="blacklisted">Danh sách đen / Chặn</option>
           </select>
 
-          <Button variant="ghost" size="icon" onClick={fetchVehicles} title="Tải lại">
+          <Button variant="ghost" size="icon" onClick={() => fetchVehicles()} title="Tải lại">
             <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

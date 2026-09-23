@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_VEHICLES } from '@/lib/storage'
 import { Vehicle } from '@/lib/types'
 import { dbGetVehicles, dbAddVehicle, dbUpdateVehicle, dbDeleteVehicle } from '@/lib/supabase'
+import { broadcastRealtime } from '@/lib/realtime'
 
 // In-memory cache for fallback
 let fleetStorage: Vehicle[] = [...INITIAL_VEHICLES]
@@ -78,6 +79,14 @@ export async function POST(req: NextRequest) {
     await dbAddVehicle(newVehicle)
     fleetStorage.unshift(newVehicle)
 
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'vehicles_updated',
+      action: 'create',
+      vehicle: newVehicle,
+      timestamp: Date.now(),
+    })
+
     return NextResponse.json({ success: true, vehicle: newVehicle }, { status: 201 })
   } catch {
     console.error('Error adding vehicle')
@@ -114,6 +123,14 @@ export async function PUT(req: NextRequest) {
     await dbUpdateVehicle(updatedVehicle)
     fleetStorage[index] = updatedVehicle
 
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'vehicles_updated',
+      action: 'update',
+      vehicle: updatedVehicle,
+      timestamp: Date.now(),
+    })
+
     return NextResponse.json({ success: true, vehicle: fleetStorage[index] })
   } catch {
     console.error('Error updating vehicle')
@@ -133,6 +150,14 @@ export async function DELETE(req: NextRequest) {
     // Delete in Supabase and cache
     await dbDeleteVehicle(id)
     fleetStorage = fleetStorage.filter((v) => v.id !== id)
+
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'vehicles_updated',
+      action: 'delete',
+      vehicleId: id,
+      timestamp: Date.now(),
+    })
 
     return NextResponse.json({ success: true, message: 'Đã xóa xe khỏi danh mục' })
   } catch {

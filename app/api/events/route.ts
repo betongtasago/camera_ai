@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { INITIAL_EVENTS } from '@/lib/storage'
 import { DetectionResult } from '@/lib/types'
 import { dbGetDetectionLogs, dbAddDetectionLog } from '@/lib/supabase'
+import { broadcastRealtime } from '@/lib/realtime'
 
 let eventsStorage: DetectionResult[] = [...INITIAL_EVENTS]
 
@@ -58,6 +59,13 @@ export async function POST(req: NextRequest) {
       eventsStorage = eventsStorage.slice(0, 100)
     }
 
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'log_added',
+      log: newEvent,
+      timestamp: Date.now(),
+    })
+
     return NextResponse.json({ success: true, event: newEvent }, { status: 201 })
   } catch {
     console.error('Error recording event')
@@ -67,5 +75,9 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE() {
   eventsStorage = []
+  broadcastRealtime({
+    type: 'logs_updated',
+    timestamp: Date.now(),
+  })
   return NextResponse.json({ success: true, message: 'Đã xóa toàn bộ nhật ký' })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Camera,
   Video,
@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   Plus,
+  Radio,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ import { AuthModal } from '@/components/camerai/auth-modal'
 import { MobileNav } from '@/components/camerai/mobile-nav'
 import { INITIAL_CAMERAS, INITIAL_EVENTS, INITIAL_VEHICLES } from '@/lib/storage'
 import { CameraConfig, DetectionResult, User, Vehicle } from '@/lib/types'
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync'
 import { toast } from 'sonner'
 
 export default function HomePage() {
@@ -55,10 +57,87 @@ export default function HomePage() {
   const [todayStats, setTodayStats] = useState({ total: 48, passed: 45, warnings: 3 })
   const [isMounted, setIsMounted] = useState(false)
 
-  // Mount check to prevent SSR hydration mismatch
+  // Fetch cameras from server/Supabase
+  const fetchCameras = useCallback(async () => {
+    try {
+      const res = await fetch('/api/cameras')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.cameras && data.cameras.length > 0) {
+          setCameras(data.cameras)
+        }
+      }
+    } catch {
+      // Fallback to existing
+    }
+  }, [])
+
+  // Fetch detection logs from server/Supabase
+  const fetchDetectionLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.events && data.events.length > 0) {
+          setDetectionLogs(data.events)
+          setLatestDetection(data.events[0])
+          const passedCount = data.events.filter((e: DetectionResult) => e.isMatch).length
+          setTodayStats({
+            total: data.events.length,
+            passed: passedCount,
+            warnings: data.events.length - passedCount,
+          })
+        }
+      }
+    } catch {
+      // Fallback to existing
+    }
+  }, [])
+
+  // Real-time synchronization across all browser tabs, devices, and sessions
+  const { status: realtimeStatus } = useRealtimeSync({
+    onCamerasUpdated: (msg) => {
+      fetchCameras()
+      toast.info('Cấu hình Camera vừa được cập nhật bởi quản trị viên (đồng bộ tức thời)')
+    },
+    onVehiclesUpdated: (msg) => {
+      if (msg.type === 'vehicles_updated') {
+        if (msg.action === 'create') {
+          toast.info('Quản trị viên vừa thêm xe mới vào danh mục (đã đồng bộ tức thời)')
+        } else if (msg.action === 'update') {
+          toast.info('Thông tin xe vừa được quản trị viên chỉnh sửa (đã đồng bộ tức thời)')
+        } else if (msg.action === 'delete') {
+          toast.info('Một xe vừa được gỡ khỏi danh mục (đã đồng bộ tức thời)')
+        }
+      }
+    },
+    onLogAdded: (log) => {
+      setLatestDetection(log)
+      setDetectionLogs((prev) => {
+        if (prev.some((p) => p.id === log.id)) return prev
+        return [log, ...prev.slice(0, 49)]
+      })
+      setTodayStats((prev) => ({
+        total: prev.total + 1,
+        passed: log.isMatch ? prev.passed + 1 : prev.passed,
+        warnings: !log.isMatch ? prev.warnings + 1 : prev.warnings,
+      }))
+    },
+    onSettingsUpdated: () => {
+      fetchCameras()
+    },
+    onFullSyncRequired: () => {
+      fetchCameras()
+      fetchDetectionLogs()
+    },
+  })
+
+  // Mount check and initial data hydration
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+    fetchCameras()
+    fetchDetectionLogs()
+  }, [fetchCameras, fetchDetectionLogs])
 
   // Check auth on mount
   useEffect(() => {
@@ -219,6 +298,26 @@ export default function HomePage() {
 
           {/* User & Theme Actions */}
           <div className="flex items-center gap-2">
+            {/* Realtime Sync Status Indicator */}
+            <Badge
+              variant="outline"
+              className={`hidden md:inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded-lg border ${
+                realtimeStatus === 'connected'
+                  ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
+                  : 'border-amber-500/30 text-amber-500 bg-amber-500/10'
+              }`}
+              title="Đồng bộ tức thời đa phiên đăng nhập và đa trình duyệt qua Supabase & Server-Sent Events"
+            >
+              <Radio
+                className={`w-3 h-3 ${
+                  realtimeStatus === 'connected' ? 'text-emerald-500 animate-pulse' : 'text-amber-500'
+                }`}
+              />
+              <span className="font-semibold">
+                {realtimeStatus === 'connected' ? 'ĐỒNG BỘ TỨC THỜI' : 'ĐANG KẾT NỐI...'}
+              </span>
+            </Badge>
+
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -430,7 +529,10 @@ export default function HomePage() {
         {activeTab === 'logs' && (
           <DetectionLogs
             logs={detectionLogs}
-            onRefresh={() => toast.info('Đã cập nhật nhật ký mới nhất')}
+            onRefresh={async () => {
+              await fetchDetectionLogs()
+              toast.info('Đã cập nhật nhật ký mới nhất từ Supabase')
+            }}
             onAddVehiclePrompt={(plate, type) => {
               setActiveTab('vehicles')
               toast.info(`Chuyển sang trang Thêm xe cho biển số: ${plate}`)

@@ -219,6 +219,25 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
               <Button type="submit" className="w-full h-10 mt-2 font-medium" disabled={isLoading}>
                 {isLoading ? 'Đang xác thực...' : 'Đăng Nhập Hệ Thống'}
               </Button>
+
+              <div className="p-2.5 rounded-lg bg-muted/50 border border-border text-[11px] text-muted-foreground space-y-1">
+                <div className="font-semibold text-foreground flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-primary" />
+                  Thông tin đăng nhập mặc định:
+                </div>
+                <div>
+                  • <strong>Admin:</strong> admin@camerai.vn | Mật khẩu:{' '}
+                  <code className="bg-background px-1.5 py-0.5 rounded border border-border font-mono text-primary font-bold">
+                    Admin@123456
+                  </code>
+                </div>
+                <div>
+                  • <strong>Operator:</strong> operator@camerai.vn | Mật khẩu:{' '}
+                  <code className="bg-background px-1.5 py-0.5 rounded border border-border font-mono text-foreground font-semibold">
+                    Operator@123456
+                  </code>
+                </div>
+              </div>
             </form>
           </div>
         )}

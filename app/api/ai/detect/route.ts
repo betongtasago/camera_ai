@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai'
 import { INITIAL_VEHICLES } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
 import { dbGetVehicles, dbAddDetectionLog } from '@/lib/supabase'
+import { broadcastRealtime } from '@/lib/realtime'
 
 // In-memory detection events
 let eventLogs: DetectionResult[] = []
@@ -125,6 +126,13 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
     if (eventLogs.length > 50) {
       eventLogs = eventLogs.slice(0, 50)
     }
+
+    // Broadcast instant sync event to all connected browsers
+    broadcastRealtime({
+      type: 'log_added',
+      log: eventResult,
+      timestamp: Date.now(),
+    })
 
     return NextResponse.json({
       success: true,
