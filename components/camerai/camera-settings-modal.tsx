@@ -25,6 +25,9 @@ import {
   Code,
   UploadCloud,
   Terminal,
+  Radio,
+  Activity,
+  Wifi,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,10 +55,38 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
   const [password, setPassword] = useState('CamerAI@2026')
   const [showPassword, setShowPassword] = useState(false)
   const [streamUrl, setStreamUrl] = useState(
-    currentCamera.streamUrl || 'rtsp://admin:••••••••@192.168.1.108:554/ch1/main',
+    currentCamera.streamUrl || 'rtsp://admin:••••••••@192.168.1.108:554/Streaming/Channels/101',
   )
   const [autoZoom, setAutoZoom] = useState(currentCamera.autoZoomPlate)
   const [aiDetection, setAiDetection] = useState(currentCamera.aiDetectionEnabled)
+
+  // Camera connection test states
+  const [isTestingCamera, setIsTestingCamera] = useState(false)
+  const [cameraTestResult, setCameraTestResult] = useState<{
+    success: boolean
+    message: string
+    latencyMs?: number
+    resolution?: string
+    fps?: number
+    bitrate?: string
+  } | null>(null)
+
+  // Sync state whenever currentCamera prop changes
+  useEffect(() => {
+    setCamName(currentCamera.name)
+    setCamLocation(currentCamera.location)
+    setStreamType(currentCamera.streamType)
+    setIpAddress(currentCamera.ipAddress || '192.168.1.108')
+    setPort(String(currentCamera.port || 554))
+    setUsername(currentCamera.username || 'admin')
+    setStreamUrl(
+      currentCamera.streamUrl ||
+        `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
+    )
+    setAutoZoom(currentCamera.autoZoomPlate)
+    setAiDetection(currentCamera.aiDetectionEnabled)
+    setCameraTestResult(null)
+  }, [currentCamera])
 
   // Supabase fields
   const [supabaseUrl, setSupabaseUrl] = useState('')
@@ -201,12 +232,61 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
 
       if (res.ok) {
         onCameraUpdated?.(updated)
-        toast.success('Đã lưu cấu hình Camera IP thành công!')
+        toast.success(`Đã lưu cấu hình Camera IP [${camName}] thành công!`)
       } else {
         toast.error('Không thể lưu cấu hình camera')
       }
     } catch {
       toast.error('Lỗi khi kết nối với máy chủ')
+    }
+  }
+
+  // Test Camera IP Connection
+  const handleTestCameraConnection = async () => {
+    setIsTestingCamera(true)
+    setCameraTestResult(null)
+    try {
+      const res = await fetch('/api/cameras/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentCamera.id,
+          name: camName,
+          ipAddress,
+          port: Number(port),
+          streamType,
+          streamUrl,
+          username,
+          password,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setCameraTestResult({
+          success: true,
+          message: data.message,
+          latencyMs: data.latencyMs,
+          resolution: data.resolution,
+          fps: data.fps,
+          bitrate: data.bitrate,
+        })
+        toast.success(data.message)
+      } else {
+        setCameraTestResult({
+          success: false,
+          message: data.error || 'Không thể kết nối đến camera IP',
+        })
+        toast.error(data.error || 'Lỗi kết nối camera IP')
+      }
+    } catch {
+      setCameraTestResult({
+        success: false,
+        message: 'Lỗi kiểm tra kết nối mạng với Camera IP',
+      })
+      toast.error('Lỗi khi kiểm tra kết nối camera')
+    } finally {
+      setIsTestingCamera(false)
     }
   }
 
@@ -642,13 +722,86 @@ export function CameraSettingsModal({ currentCamera, onCameraUpdated }: CameraSe
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">RTSP Stream Path / URL đầy đủ</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold">RTSP Stream Path / URL đầy đủ</Label>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {ipAddress}:{port}
+              </span>
+            </div>
             <Input
               value={streamUrl}
               onChange={(e) => setStreamUrl(e.target.value)}
               placeholder="rtsp://admin:pass@192.168.1.108:554/Streaming/Channels/101"
-              className="font-mono text-xs text-muted-foreground"
+              className="font-mono text-xs text-foreground bg-muted/30"
             />
+          </div>
+
+          {/* Test Camera Connection Button & Result Panel */}
+          <div className="border border-border/80 rounded-xl p-4 bg-muted/30 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                  Kiểm Tra Kết Nối Camera IP Thực Tế
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Gửi gói tin ping và kiểm tra cổng RTSP ({ipAddress}:{port}) theo cấu hình
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestCameraConnection}
+                disabled={isTestingCamera || !ipAddress.trim()}
+                className="text-xs border-primary/40 hover:bg-primary/10 text-primary font-semibold h-8"
+              >
+                <Radio className={`w-3.5 h-3.5 mr-1.5 ${isTestingCamera ? 'animate-pulse text-amber-500' : ''}`} />
+                {isTestingCamera ? 'Đang Kiểm Tra IP...' : 'Kiểm Tra Kết Nối Camera'}
+              </Button>
+            </div>
+
+            {/* Diagnostic Result */}
+            {cameraTestResult && (
+              <div
+                className={`p-3 rounded-lg border text-xs flex flex-col gap-1.5 animate-in fade-in duration-300 ${
+                  cameraTestResult.success
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold">
+                  {cameraTestResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                  )}
+                  <span>{cameraTestResult.message}</span>
+                </div>
+
+                {cameraTestResult.success && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px] text-foreground">
+                    <div className="bg-background/80 p-1.5 rounded border border-border">
+                      <span className="text-muted-foreground block text-[10px]">ĐỘ TRỄ (PING):</span>
+                      <span className="font-bold text-emerald-500">{cameraTestResult.latencyMs} ms</span>
+                    </div>
+                    <div className="bg-background/80 p-1.5 rounded border border-border">
+                      <span className="text-muted-foreground block text-[10px]">ĐỘ PHÂN GIẢI:</span>
+                      <span className="font-bold">{cameraTestResult.resolution}</span>
+                    </div>
+                    <div className="bg-background/80 p-1.5 rounded border border-border">
+                      <span className="text-muted-foreground block text-[10px]">TỐC ĐỘ KHUNG HÌNH:</span>
+                      <span className="font-bold">{cameraTestResult.fps} FPS</span>
+                    </div>
+                    <div className="bg-background/80 p-1.5 rounded border border-border">
+                      <span className="text-muted-foreground block text-[10px]">BĂNG THÔNG:</span>
+                      <span className="font-bold">{cameraTestResult.bitrate}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* AI Settings switches */}

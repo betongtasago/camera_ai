@@ -19,6 +19,10 @@ import {
   Eye,
   CheckCircle2,
   Send,
+  Activity,
+  Wifi,
+  Globe,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +63,45 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
   const [currentDetection, setCurrentDetection] = useState<DetectionResult | null>(null)
   const [currentTimeStr, setCurrentTimeStr] = useState('16:36:08')
   const [cameraFps, setCameraFps] = useState(29.8)
+
+  // Camera IP Connection & Diagnostic State
+  const [isPinging, setIsPinging] = useState(false)
+  const [pingLatency, setPingLatency] = useState<number | null>(14)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'checking' | 'error'>('connected')
+
+  const handlePingCamera = async () => {
+    setIsPinging(true)
+    setConnectionStatus('checking')
+    try {
+      const res = await fetch('/api/cameras/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentCamera.id,
+          name: currentCamera.name,
+          ipAddress: currentCamera.ipAddress,
+          port: currentCamera.port,
+          streamType: currentCamera.streamType,
+          streamUrl: currentCamera.streamUrl,
+          username: currentCamera.username,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setPingLatency(data.latencyMs || 14)
+        setConnectionStatus('connected')
+        toast.success(`Đã kiểm tra kết nối Camera IP ${currentCamera.ipAddress}: Hoạt động tốt (${data.latencyMs}ms)`)
+      } else {
+        setConnectionStatus('error')
+        toast.error(data.error || 'Không thể kết nối Camera IP')
+      }
+    } catch {
+      setConnectionStatus('error')
+      toast.error('Lỗi khi kiểm tra kết nối Camera IP')
+    } finally {
+      setIsPinging(false)
+    }
+  }
 
   // Beep sound with Web Audio API
   const playAlertSound = useCallback(
@@ -535,6 +578,18 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
       ctx.textAlign = 'left'
       ctx.fillText(`at ${currentTimeStr}`, zoomEnabled ? Math.min(245, w * 0.3) : 16, 32)
 
+      // Top-right banner: Configured Camera IP & Channel
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+      ctx.fillRect(w - Math.min(460, w * 0.45), 10, Math.min(445, w * 0.44), 32)
+      ctx.fillStyle = '#22c55e'
+      ctx.font = 'bold 12px "Courier New", monospace'
+      ctx.textAlign = 'right'
+      ctx.fillText(
+        `● LIVE IP: ${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554} [${(currentCamera.streamType || 'RTSP').toUpperCase()}]`,
+        w - 24,
+        31,
+      )
+
       // Bottom-Right location tag: "CAN - KHU SUA CHUA" (as shown in image)
       ctx.fillStyle = '#0f172a'
       ctx.font = '900 18px "Courier New", monospace'
@@ -578,6 +633,75 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Configured Camera IP Connection Banner */}
+      <div className="bg-card border border-border rounded-xl p-3 sm:p-3.5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <Radio className="w-5 h-5 animate-pulse text-emerald-500" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-foreground">
+                {currentCamera.name || 'CAM 01 - Cân Xe'}
+              </span>
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-mono px-2 py-0.5 border ${
+                  connectionStatus === 'connected'
+                    ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
+                    : connectionStatus === 'checking'
+                    ? 'border-amber-500/30 text-amber-500 bg-amber-500/10'
+                    : 'border-red-500/30 text-red-500 bg-red-500/10'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                    connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  }`}
+                />
+                {connectionStatus === 'connected'
+                  ? `ĐÃ KẾT NỐI CAMERA THEO CẤU HÌNH (${pingLatency || 14}ms)`
+                  : connectionStatus === 'checking'
+                  ? 'ĐANG KIỂM TRA LUỒNG CAMERA...'
+                  : 'MẤT TÍN HIỆU CAMERA IP'}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0.5 bg-muted">
+                {currentCamera.streamType.toUpperCase()}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground font-mono flex-wrap">
+              <span className="text-foreground font-semibold">
+                IP: {currentCamera.ipAddress || '192.168.1.108'}:{currentCamera.port || 554}
+              </span>
+              <span>•</span>
+              <span className="truncate max-w-[280px] sm:max-w-md" title={currentCamera.streamUrl}>
+                Luồng: {currentCamera.streamUrl || `rtsp://${currentCamera.ipAddress}:${currentCamera.port}/Streaming/Channels/101`}
+              </span>
+              <span>•</span>
+              <span className="text-emerald-500 font-sans font-medium">
+                {currentCamera.location}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Diagnostic Actions */}
+        <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePingCamera}
+            disabled={isPinging}
+            className="text-xs h-8 border-border hover:border-primary"
+            title="Kiểm tra tín hiệu mạng tới Camera IP"
+          >
+            <Activity className={`w-3.5 h-3.5 mr-1.5 ${isPinging ? 'animate-spin text-primary' : 'text-emerald-500'}`} />
+            {isPinging ? 'Đang Kiểm Tra IP...' : 'Kiểm Tra Kết Nối IP'}
+          </Button>
+        </div>
+      </div>
+
       {/* CCTV Viewport Container */}
       <div
         ref={containerRef}

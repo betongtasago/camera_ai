@@ -33,6 +33,7 @@ import { VehicleManagement } from '@/components/camerai/vehicle-management'
 import { CameraSettingsModal } from '@/components/camerai/camera-settings-modal'
 import { DetectionLogs } from '@/components/camerai/detection-logs'
 import { AuthModal } from '@/components/camerai/auth-modal'
+import { LoginScreen } from '@/components/camerai/login-screen'
 import { MobileNav } from '@/components/camerai/mobile-nav'
 import { INITIAL_CAMERAS, INITIAL_EVENTS, INITIAL_VEHICLES } from '@/lib/storage'
 import { CameraConfig, DetectionResult, User, Vehicle } from '@/lib/types'
@@ -45,6 +46,7 @@ export default function HomePage() {
 
   // Auth & User state
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
   // Cameras state
@@ -139,7 +141,7 @@ export default function HomePage() {
     fetchDetectionLogs()
   }, [fetchCameras, fetchDetectionLogs])
 
-  // Check auth on mount
+  // Check auth on mount: requires login to view page content
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => res.json())
@@ -147,25 +149,28 @@ export default function HomePage() {
         if (data.user) {
           setCurrentUser(data.user)
         } else {
-          // Default demo user for seamless access: Admin
-          setCurrentUser({
-            id: 'usr_admin_01',
-            email: 'admin@camerai.vn',
-            name: 'Quản trị viên Hệ thống',
-            role: 'admin',
-          })
+          setCurrentUser(null)
         }
       })
       .catch(() => {
-        // Local fallback
-        setCurrentUser({
-          id: 'usr_admin_01',
-          email: 'admin@camerai.vn',
-          name: 'Quản trị viên Hệ thống',
-          role: 'admin',
-        })
+        setCurrentUser(null)
+      })
+      .finally(() => {
+        setIsAuthChecking(false)
       })
   }, [])
+
+  // Explicit logout handler
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // Ignore
+    } finally {
+      setCurrentUser(null)
+      toast.success('Đã đăng xuất tài khoản an toàn')
+    }
+  }
 
   // Currently active camera
   const currentCamera = cameras.find((c) => c.id === selectedCameraId) || cameras[0]
@@ -198,6 +203,21 @@ export default function HomePage() {
     } catch {
       toast.error('Không thể kết nối đến dịch vụ Telegram')
     }
+  }
+
+  // Loading session state
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background gap-3">
+        <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-muted-foreground font-mono">Đang kiểm tra phiên đăng nhập CamerAI...</p>
+      </div>
+    )
+  }
+
+  // Enforce Login: Only display page content after logging in
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />
   }
 
   return (
@@ -330,31 +350,40 @@ export default function HomePage() {
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
 
-            {/* Account Button */}
-            {currentUser ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="h-9 text-xs px-2.5 sm:px-3 border-border bg-card"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-                <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">{currentUser.name}</span>
-                <Badge
-                  className={
-                    currentUser.role === 'admin'
-                      ? 'ml-1.5 bg-primary/15 text-primary border-primary/20 text-[9px] px-1 py-0'
-                      : 'ml-1.5 bg-muted text-muted-foreground text-[9px] px-1 py-0'
-                  }
+            {/* Account Button & Logout Button */}
+            {currentUser && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="h-9 text-xs px-2.5 sm:px-3 border-border bg-card"
+                  title="Thông tin tài khoản"
                 >
-                  {currentUser.role === 'admin' ? 'ADMIN' : 'OPERATOR'}
-                </Badge>
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => setIsAuthModalOpen(true)} className="h-9 text-xs font-semibold">
-                <LogIn className="w-3.5 h-3.5 mr-1.5" />
-                Đăng nhập
-              </Button>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
+                  <span className="font-semibold truncate max-w-[90px] sm:max-w-[120px]">{currentUser.name}</span>
+                  <Badge
+                    className={
+                      currentUser.role === 'admin'
+                        ? 'ml-1.5 bg-primary/15 text-primary border-primary/20 text-[9px] px-1 py-0'
+                        : 'ml-1.5 bg-muted text-muted-foreground text-[9px] px-1 py-0'
+                    }
+                  >
+                    {currentUser.role === 'admin' ? 'ADMIN' : 'OPERATOR'}
+                  </Badge>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="h-9 text-xs text-muted-foreground hover:text-destructive px-2 sm:px-2.5"
+                  title="Đăng xuất khỏi hệ thống"
+                >
+                  <LogOut className="w-4 h-4 sm:mr-1.5 text-muted-foreground hover:text-destructive" />
+                  <span className="hidden sm:inline">Đăng xuất</span>
+                </Button>
+              </>
             )}
           </div>
         </div>
