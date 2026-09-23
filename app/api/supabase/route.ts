@@ -12,6 +12,7 @@ import {
   getSupabaseClient,
 } from '@/lib/supabase'
 import { INITIAL_VEHICLES, INITIAL_CAMERAS, INITIAL_EVENTS } from '@/lib/storage'
+import { broadcastRealtime } from '@/lib/realtime'
 
 export async function GET() {
   try {
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
         setCustomSupabaseCredentials(url, key)
       }
       const result = await testSupabaseConnection(url, key)
+      broadcastRealtime({ type: 'settings_updated', section: 'supabase', timestamp: Date.now() })
       return NextResponse.json({
         success: result.success,
         message: result.success
@@ -95,6 +97,8 @@ export async function POST(req: NextRequest) {
         const ok = await dbAddDetectionLog(l)
         if (ok) logsAdded++
       }
+
+      broadcastRealtime({ type: 'settings_updated', section: 'supabase', timestamp: Date.now() })
 
       return NextResponse.json({
         success: true,

@@ -8,7 +8,7 @@ interface RealtimeSyncCallbacks {
   onVehiclesUpdated?: (event: RealtimeSyncMessage) => void
   onCamerasUpdated?: (event: RealtimeSyncMessage) => void
   onLogAdded?: (log: DetectionResult) => void
-  onSettingsUpdated?: () => void
+  onSettingsUpdated?: (event: Extract<RealtimeSyncMessage, { type: 'settings_updated' }>) => void
   onFullSyncRequired?: () => void
 }
 
@@ -57,7 +57,7 @@ export function useRealtimeSync(callbacks: RealtimeSyncCallbacks = {}) {
         break
 
       case 'settings_updated':
-        callbacksRef.current.onSettingsUpdated?.()
+        callbacksRef.current.onSettingsUpdated?.(msg)
         break
 
       default:

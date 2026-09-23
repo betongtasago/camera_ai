@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       }
 
       const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
-      const text = `🔔 *[CamerAI] KIỂM TRA KẾT NỐI TELEGRAM BOT*\n\n✅ Kết nối thành công tới hệ thống giám sát Camera IP & Nhận diện Biển số Xe!\n⏱️ Thời gian: ${new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`
+      const text = `🔔 *[TSG-TNT AI] KIỂM TRA KẾT NỐI TELEGRAM BOT*\n\n✅ Kết nối thành công tới hệ thống giám sát Camera IP & Nhận diện Biển số Xe!\n⏱️ Thời gian: ${new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`
 
       const res = await fetch(telegramUrl, {
         method: 'POST',
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const matchStatus = det.isMatch ? '✅ *XE ĐÃ ĐĂNG KÝ*' : '⚠️ *XE NGOÀI DANH MỤC*'
 
     const messageText = [
-      `🚨 *[CamerAI] PHÁT HIỆN XE QUA CAMERA*`,
+      `🚨 *[TSG-TNT AI] PHÁT HIỆN XE QUA CAMERA*`,
       ``,
       `🔢 *Biển số xe:* \`${det.plateNumber}\``,
       `👤 *Tài xế:* ${det.matchedVehicle?.driverName || 'Chưa có trong danh mục'}`,
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       `🎯 *Độ chính xác AI:* ${det.confidence}%`,
       `🔍 *Trạng thái:* ${matchStatus}`,
       ``,
-      `_Hệ thống giám sát Camera IP ANPR - CamerAI_`,
+      `_Hệ thống giám sát Camera IP ANPR - TSG-TNT AI_`,
     ].join('\n')
 
     // If botToken and chatId are present, send to real Telegram API

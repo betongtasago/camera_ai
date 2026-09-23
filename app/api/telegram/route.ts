@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGlobalTelegramConfig, setGlobalTelegramConfig } from '@/lib/storage'
 import { dbGetTelegramConfig, dbSaveTelegramConfig } from '@/lib/supabase'
+import { broadcastRealtime } from '@/lib/realtime'
 
 // GET: Retrieve telegram settings
 export async function GET() {
@@ -42,6 +43,7 @@ export async function PUT(req: NextRequest) {
 
     // Persist to Supabase
     await dbSaveTelegramConfig(updated)
+    broadcastRealtime({ type: 'settings_updated', section: 'telegram', timestamp: Date.now() })
 
     return NextResponse.json({
       success: true,

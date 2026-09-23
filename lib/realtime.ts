@@ -27,6 +27,7 @@ export type RealtimeSyncMessage =
     }
   | {
       type: 'settings_updated'
+      section?: 'telegram' | 'supabase'
       timestamp: number
     }
 

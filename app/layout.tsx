@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'CamerAI - Giám sát Camera IP & Nhận diện Biển số Xe AI',
+  title: 'TSG-TNT AI - Giám sát Camera IP & Nhận diện Biển số Xe AI',
   description:
     'Hệ thống giám sát camera IP thông minh, AI tự động nhận dạng xe di chuyển từ xa lại gần, phóng to zoom biển số (LPR/ANPR), đối soát danh mục xe (biển số, tài xế, loại xe) và cảnh báo theo thời gian thực.',
   openGraph: {
-    title: 'CamerAI - Giám sát Camera IP & Nhận diện Biển số Xe AI',
+    title: 'TSG-TNT AI - Giám sát Camera IP & Nhận diện Biển số Xe AI',
     description:
       'Hệ thống giám sát camera IP thông minh, AI tự động nhận dạng xe di chuyển từ xa lại gần, phóng to zoom biển số (LPR/ANPR), đối soát danh mục xe (biển số, tài xế, loại xe) và cảnh báo theo thời gian thực.',
   },

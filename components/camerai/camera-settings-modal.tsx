@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Settings,
   Camera,
@@ -45,6 +45,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { CameraConfig } from '@/lib/types'
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync'
 import { toast } from 'sonner'
 
 interface CameraSettingsModalProps {
@@ -164,8 +165,7 @@ export function CameraSettingsModal({
       })
   }, [])
 
-  // Load Telegram config
-  useEffect(() => {
+  const fetchTelegramConfig = useCallback(async () => {
     fetch('/api/telegram')
       .then((r) => r.json())
       .then((data) => {
@@ -178,6 +178,16 @@ export function CameraSettingsModal({
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    fetchTelegramConfig()
+  }, [fetchTelegramConfig])
+
+  useRealtimeSync({
+    onSettingsUpdated: (event) => {
+      if (event.section === 'telegram') fetchTelegramConfig()
+    },
+  })
 
   // Save Telegram config
   const handleSaveTelegram = async (e: React.FormEvent) => {

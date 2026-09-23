@@ -103,6 +103,31 @@ export default function HomePage() {
     }
   }, [])
 
+  const fetchTelegramSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/telegram')
+      if (res.ok) {
+        const data = await res.json()
+        setTelegramAutoNotify(Boolean(data.config?.enabled))
+      }
+    } catch {
+      // Keep the current value when the settings endpoint is temporarily unavailable.
+    }
+  }, [])
+
+  const handleToggleTelegramAutoNotify = useCallback(async (enabled: boolean) => {
+    setTelegramAutoNotify(enabled)
+    try {
+      await fetch('/api/telegram', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+    } catch {
+      toast.error('Không thể đồng bộ trạng thái Telegram')
+    }
+  }, [])
+
   // Real-time synchronization across all browser tabs, devices, and sessions
   const { status: realtimeStatus } = useRealtimeSync({
     onCamerasUpdated: (msg) => {
@@ -132,8 +157,9 @@ export default function HomePage() {
         warnings: !log.isMatch ? prev.warnings + 1 : prev.warnings,
       }))
     },
-    onSettingsUpdated: () => {
-      fetchCameras()
+    onSettingsUpdated: (event) => {
+      if (event.section === 'telegram') fetchTelegramSettings()
+      if (event.section === 'supabase') fetchCameras()
     },
     onFullSyncRequired: () => {
       fetchCameras()
@@ -146,7 +172,8 @@ export default function HomePage() {
     setIsMounted(true)
     fetchCameras()
     fetchDetectionLogs()
-  }, [fetchCameras, fetchDetectionLogs])
+    fetchTelegramSettings()
+  }, [fetchCameras, fetchDetectionLogs, fetchTelegramSettings])
 
   // Check auth on mount: requires login to view page content
   useEffect(() => {
@@ -227,7 +254,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background gap-3">
         <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-muted-foreground font-mono">Đang kiểm tra phiên đăng nhập CamerAI...</p>
+        <p className="text-xs text-muted-foreground font-mono">Đang kiểm tra phiên đăng nhập TSG-TNT AI...</p>
       </div>
     )
   }
@@ -250,7 +277,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
-                  CamerAI
+                  TSG-TNT AI
                 </span>
                 <Badge
                   variant="outline"
@@ -446,7 +473,7 @@ export default function HomePage() {
                   onDetectionTriggered={handleDetectionTriggered}
                   userRole={currentUser?.role}
                   telegramAutoNotify={telegramAutoNotify}
-                  onToggleTelegramAutoNotify={setTelegramAutoNotify}
+                  onToggleTelegramAutoNotify={handleToggleTelegramAutoNotify}
                 />}
               </div>
 

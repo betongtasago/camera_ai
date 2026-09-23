@@ -137,13 +137,13 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
           <div>
             <span className="font-black text-lg tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
-              CamerAI
+              TSG-TNT AI
             </span>
             <Badge
               variant="outline"
               className="ml-2 text-[10px] font-mono px-1.5 py-0.5 border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
             >
-              ANPR PRO
+              ANPR PRO • TSG-TNT AI
             </Badge>
           </div>
         </div>
@@ -445,7 +445,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
       {/* Footer */}
       <div className="w-full max-w-5xl mx-auto text-center py-3 text-xs text-muted-foreground">
-        Hệ Thống CamerAI © 2026 • Giám Sát Camera IP & Nhận Diện Biển Số Xe Trạm Cân Bê Tông
+        Hệ Thống TSG-TNT AI © 2026 • Giám Sát Camera IP & Nhận Diện Biển Số Xe Trạm Cân Bê Tông
       </div>
     </div>
   )
