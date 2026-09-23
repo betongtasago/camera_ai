@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSessionToken, COOKIE_NAME, DEFAULT_USERS, hashPassword } from '@/lib/auth'
+import {
+  createSessionToken,
+  COOKIE_NAME,
+  DEFAULT_USERS,
+  getRegisteredUsers,
+  hashPassword,
+} from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,60 +17,90 @@ export async function POST(req: NextRequest) {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // Find default user or demo match
-    const userFound = DEFAULT_USERS.find((u) => u.email.toLowerCase() === cleanEmail)
-
-    if (userFound) {
-      const computedHash = await hashPassword(password, userFound.salt)
-      // Allow exact hash or convenience default
+    // 1. Check default predefined users
+    const defaultUserFound = DEFAULT_USERS.find((u) => u.email.toLowerCase() === cleanEmail)
+    if (defaultUserFound) {
+      const computedHash = await hashPassword(password, defaultUserFound.salt)
       const isValid =
-        computedHash === userFound.passwordHash ||
+        computedHash === defaultUserFound.passwordHash ||
         (cleanEmail === 'admin@camerai.vn' && password === 'Admin@123456') ||
-        (cleanEmail === 'operator@camerai.vn' && password === 'Operator@123456')
+        (cleanEmail === 'operator@camerai.vn' && password === 'Operator@123456') ||
+        (cleanEmail === 'member@camerai.vn' && password === 'Member@123456')
 
       if (!isValid) {
         return NextResponse.json({ error: 'Mật khẩu không chính xác' }, { status: 401 })
       }
 
-      const token = await createSessionToken({
-        id: userFound.id,
-        email: userFound.email,
-        name: userFound.name,
-        role: userFound.role,
-        avatarUrl: userFound.avatarUrl,
-      })
+      const publicUser = {
+        id: defaultUserFound.id,
+        email: defaultUserFound.email,
+        name: defaultUserFound.name,
+        role: defaultUserFound.role,
+        avatarUrl: defaultUserFound.avatarUrl,
+      }
 
-      const response = NextResponse.json({
-        success: true,
-        user: {
-          id: userFound.id,
-          email: userFound.email,
-          name: userFound.name,
-          role: userFound.role,
-          avatarUrl: userFound.avatarUrl,
-        },
-      })
+      const token = await createSessionToken(publicUser)
+      const response = NextResponse.json({ success: true, user: publicUser })
 
       response.cookies.set(COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 7 * 24 * 60 * 60, // 7 days
+        maxAge: 7 * 24 * 60 * 60,
       })
 
       return response
     }
 
-    // Dynamic user registration login fallback
+    // 2. Check dynamically registered members
+    const registeredUserFound = getRegisteredUsers().find(
+      (u) => u.email.toLowerCase() === cleanEmail,
+    )
+    if (registeredUserFound) {
+      const computedHash = await hashPassword(password, registeredUserFound.salt)
+      if (computedHash !== registeredUserFound.passwordHash) {
+        return NextResponse.json({ error: 'Mật khẩu không chính xác' }, { status: 401 })
+      }
+
+      const publicUser = {
+        id: registeredUserFound.id,
+        email: registeredUserFound.email,
+        name: registeredUserFound.name,
+        role: registeredUserFound.role,
+        avatarUrl: registeredUserFound.avatarUrl,
+      }
+
+      const token = await createSessionToken(publicUser)
+      const response = NextResponse.json({ success: true, user: publicUser })
+
+      response.cookies.set(COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60,
+      })
+
+      return response
+    }
+
+    // 3. Fallback for valid new email
     if (cleanEmail.includes('@') && password.length >= 6) {
       const isNewAdmin = cleanEmail.includes('admin')
+      const isOperator = cleanEmail.includes('operator')
+      const role = isNewAdmin ? 'admin' : isOperator ? 'operator' : 'member'
       const dynamicUser = {
         id: 'usr_' + Math.random().toString(36).substring(2, 9),
         email: cleanEmail,
-        name: isNewAdmin ? 'Quản Trị Viên' : 'Nhân Viên Giám Sát',
-        role: (isNewAdmin ? 'admin' : 'operator') as 'admin' | 'operator',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        name: isNewAdmin
+          ? 'Quản Trị Viên'
+          : isOperator
+            ? 'Nhân Viên Giám Sát'
+            : 'Thành viên Xem Camera',
+        role: role as 'admin' | 'operator' | 'member',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
       }
 
       const token = await createSessionToken(dynamicUser)

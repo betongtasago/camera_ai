@@ -59,6 +59,9 @@ export default function HomePage() {
   const [todayStats, setTodayStats] = useState({ total: 48, passed: 45, warnings: 3 })
   const [isMounted, setIsMounted] = useState(false)
 
+  // Telegram auto notification setting: default is OFF per user requirement
+  const [telegramAutoNotify, setTelegramAutoNotify] = useState<boolean>(false)
+
   // Fleet pre-fill navigation state
   const [prefillPlate, setPrefillPlate] = useState<string>('')
   const [autoOpenVehicleModal, setAutoOpenVehicleModal] = useState<boolean>(false)
@@ -163,6 +166,15 @@ export default function HomePage() {
         setIsAuthChecking(false)
       })
   }, [])
+
+  // Member role restriction: Members only have access to view Camera AI
+  const isMember = currentUser?.role === 'member'
+
+  useEffect(() => {
+    if (isMember && activeTab !== 'monitor') {
+      setActiveTab('monitor')
+    }
+  }, [isMember, activeTab])
 
   // Explicit logout handler
   const handleLogout = async () => {
@@ -275,7 +287,7 @@ export default function HomePage() {
               onClick={() => setActiveTab('monitor')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'monitor'
-                  ? 'bg-background shadow-xs text-primary'
+                  ? 'bg-background shadow-xs text-primary font-bold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -283,41 +295,45 @@ export default function HomePage() {
               Camera AI
             </button>
 
-            <button
-              onClick={() => setActiveTab('vehicles')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'vehicles'
-                  ? 'bg-background shadow-xs text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              Danh Mục Xe
-            </button>
+            {!isMember && (
+              <>
+                <button
+                  onClick={() => setActiveTab('vehicles')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'vehicles'
+                      ? 'bg-background shadow-xs text-primary font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Truck className="w-3.5 h-3.5" />
+                  Danh Mục Xe
+                </button>
 
-            <button
-              onClick={() => setActiveTab('logs')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'logs'
-                  ? 'bg-background shadow-xs text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ClipboardList className="w-3.5 h-3.5" />
-              Nhật Ký ({detectionLogs.length})
-            </button>
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'logs'
+                      ? 'bg-background shadow-xs text-primary font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  Nhật Ký ({detectionLogs.length})
+                </button>
 
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-background shadow-xs text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Cấu Hình IP
-            </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'settings'
+                      ? 'bg-background shadow-xs text-primary font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Cấu Hình IP
+                </button>
+              </>
+            )}
           </nav>
 
           {/* User & Theme Actions */}
@@ -370,10 +386,16 @@ export default function HomePage() {
                     className={
                       currentUser.role === 'admin'
                         ? 'ml-1.5 bg-primary/15 text-primary border-primary/20 text-[9px] px-1 py-0'
-                        : 'ml-1.5 bg-muted text-muted-foreground text-[9px] px-1 py-0'
+                        : currentUser.role === 'operator'
+                          ? 'ml-1.5 bg-emerald-500/15 text-emerald-500 border-emerald-500/20 text-[9px] px-1 py-0'
+                          : 'ml-1.5 bg-sky-500/15 text-sky-500 border-sky-500/20 text-[9px] px-1 py-0'
                     }
                   >
-                    {currentUser.role === 'admin' ? 'ADMIN' : 'OPERATOR'}
+                    {currentUser.role === 'admin'
+                      ? 'ADMIN'
+                      : currentUser.role === 'operator'
+                        ? 'OPERATOR'
+                        : 'MEMBER'}
                   </Badge>
                 </Button>
 
@@ -422,6 +444,8 @@ export default function HomePage() {
                   currentCamera={currentCamera}
                   onDetectionTriggered={handleDetectionTriggered}
                   userRole={currentUser?.role}
+                  telegramAutoNotify={telegramAutoNotify}
+                  onToggleTelegramAutoNotify={setTelegramAutoNotify}
                 />
               </div>
 
@@ -502,8 +526,54 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2">
+                  {/* Action Buttons & Telegram Mode */}
+                  <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2.5">
+                    {/* Telegram Auto Notification Toggle Control */}
+                    <div className="bg-muted/40 p-2.5 rounded-xl border border-border flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                            telegramAutoNotify
+                              ? 'bg-sky-500/20 text-sky-500'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          <Send className={`w-3.5 h-3.5 ${telegramAutoNotify ? 'animate-pulse' : ''}`} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-foreground">Tự động báo Telegram</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {telegramAutoNotify
+                              ? 'Đang BẬT: Báo bot khi có xe'
+                              : 'Đang TẮT: Bấm nút để gửi thủ công'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={telegramAutoNotify ? 'default' : 'outline'}
+                        onClick={() => {
+                          const next = !telegramAutoNotify
+                          setTelegramAutoNotify(next)
+                          if (next) {
+                            toast.success('Đã BẬT tự động gửi tin nhắn Telegram khi có xe!')
+                          } else {
+                            toast.info('Đã TẮT tự động gửi Telegram (Bạn có thể bấm gửi thủ công)')
+                          }
+                        }}
+                        className={`h-7 px-3 text-xs font-extrabold transition-all ${
+                          telegramAutoNotify
+                            ? 'bg-sky-600 hover:bg-sky-700 text-white shadow-xs'
+                            : 'border-border text-muted-foreground hover:text-foreground'
+                        }`}
+                        title="Bật/Tắt chế độ tự động thông báo Telegram"
+                      >
+                        {telegramAutoNotify ? 'BẬT' : 'TẮT'}
+                      </Button>
+                    </div>
+
                     <Button
                       onClick={handleSendTelegram}
                       className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
@@ -512,7 +582,7 @@ export default function HomePage() {
                       GỬI BÁO CÁO QUA TELEGRAM
                     </Button>
 
-                    {!latestDetection.isMatch && (
+                    {!latestDetection.isMatch && !isMember && (
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -555,8 +625,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* TAB 2: REGISTERED FLEET (BIỂN SỐ, TÀI XẾ, LOẠI XE) */}
-        {activeTab === 'vehicles' && (
+        {/* TAB 2: REGISTERED FLEET (BIỂN SỐ, TÀI XẾ, LOẠI XE) - Hidden for Member */}
+        {activeTab === 'vehicles' && !isMember && (
           <VehicleManagement
             userRole={currentUser?.role}
             initialPlate={prefillPlate}
@@ -569,8 +639,8 @@ export default function HomePage() {
           />
         )}
 
-        {/* TAB 3: DETECTION LOGS */}
-        {activeTab === 'logs' && (
+        {/* TAB 3: DETECTION LOGS - Hidden for Member */}
+        {activeTab === 'logs' && !isMember && (
           <DetectionLogs
             logs={detectionLogs}
             userRole={currentUser?.role}
@@ -588,8 +658,8 @@ export default function HomePage() {
           />
         )}
 
-        {/* TAB 4: CAMERA IP & SUPABASE SETTINGS */}
-        {activeTab === 'settings' && (
+        {/* TAB 4: CAMERA IP & SUPABASE SETTINGS - Hidden for Member */}
+        {activeTab === 'settings' && !isMember && (
           <CameraSettingsModal
             currentCamera={currentCamera}
             cameras={cameras}

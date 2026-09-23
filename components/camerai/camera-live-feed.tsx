@@ -35,9 +35,17 @@ interface CameraLiveFeedProps {
   currentCamera: CameraConfig
   onDetectionTriggered?: (result: DetectionResult) => void
   userRole?: string
+  telegramAutoNotify?: boolean
+  onToggleTelegramAutoNotify?: (enabled: boolean) => void
 }
 
-export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }: CameraLiveFeedProps) {
+export function CameraLiveFeed({
+  currentCamera,
+  onDetectionTriggered,
+  userRole,
+  telegramAutoNotify,
+  onToggleTelegramAutoNotify,
+}: CameraLiveFeedProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -51,8 +59,16 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
   const [useWebcam, setUseWebcam] = useState(false)
   const [customPlateInput, setCustomPlateInput] = useState('51N-043.57')
 
-  // Auto-detection & Telegram alert state
-  const [autoDetectEnabled, setAutoDetectEnabled] = useState(true)
+  // Auto-detection & Telegram alert state: Default is OFF as required by user
+  const [internalAutoTelegram, setInternalAutoTelegram] = useState(false)
+  const autoTelegram = telegramAutoNotify !== undefined ? telegramAutoNotify : internalAutoTelegram
+
+  const handleToggleAutoTelegram = (val: boolean) => {
+    setInternalAutoTelegram(val)
+    onToggleTelegramAutoNotify?.(val)
+  }
+
+  const [autoDetectScan, setAutoDetectScan] = useState(true)
   const [telegramAlertFlash, setTelegramAlertFlash] = useState<{ plate: string; time: string } | null>(null)
   const [autoAlertCount, setAutoAlertCount] = useState(0)
   const hasTriggeredPassRef = useRef(false)
@@ -182,27 +198,29 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
             onDetectionTriggered?.(data.detection)
             playAlertSound(data.detection.isMatch)
 
-            // Auto-send notification to Telegram bot
-            try {
-              const tgRes = await fetch('/api/telegram/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ detection: data.detection }),
-              })
-              const tgData = await tgRes.json().catch(() => ({}))
+            // Only send notification to Telegram bot if autoTelegram is ON
+            if (autoTelegram) {
+              try {
+                const tgRes = await fetch('/api/telegram/send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ detection: data.detection }),
+                })
+                const tgData = await tgRes.json().catch(() => ({}))
 
-              setAutoAlertCount((prev) => prev + 1)
-              const timeStr = new Date().toLocaleTimeString('vi-VN')
-              setTelegramAlertFlash({ plate: data.detection.plateNumber, time: timeStr })
-              setTimeout(() => setTelegramAlertFlash(null), 3500)
+                setAutoAlertCount((prev) => prev + 1)
+                const timeStr = new Date().toLocaleTimeString('vi-VN')
+                setTelegramAlertFlash({ plate: data.detection.plateNumber, time: timeStr })
+                setTimeout(() => setTelegramAlertFlash(null), 3500)
 
-              if (tgData.realSent) {
-                toast.success(`Đã tự động gửi thông báo xe ${data.detection.plateNumber} qua Bot Telegram!`)
-              } else {
-                toast.success(`Tự động nhận diện: ${data.detection.plateNumber} -> Đã gửi tin báo Telegram!`)
+                if (tgData.realSent) {
+                  toast.success(`Đã tự động gửi thông báo xe ${data.detection.plateNumber} qua Bot Telegram!`)
+                } else {
+                  toast.success(`Tự động nhận diện: ${data.detection.plateNumber} -> Đã gửi tin báo Telegram!`)
+                }
+              } catch {
+                // Network error handling
               }
-            } catch {
-              // Network error handling
             }
           }
         }
@@ -212,29 +230,29 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
         setIsAnalyzing(false)
       }
     },
-    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound],
+    [customPlateInput, currentCamera, onDetectionTriggered, playAlertSound, autoTelegram],
   )
 
   // Auto-detect first vehicle upon opening / login from ANY browser
   useEffect(() => {
-    if (!autoDetectEnabled) return
+    if (!autoDetectScan) return
     const initialTimer = setTimeout(() => {
       if (!hasTriggeredPassRef.current) {
         hasTriggeredPassRef.current = true
         runAiAnalysis(customPlateInput)
       }
-    }, 1800)
+    }, 1200)
     return () => clearTimeout(initialTimer)
-  }, [autoDetectEnabled, customPlateInput, runAiAnalysis])
+  }, [autoDetectScan, customPlateInput, runAiAnalysis])
 
   // Periodic webcam AI scanning if webcam is active
   useEffect(() => {
-    if (!useWebcam || !autoDetectEnabled) return
+    if (!useWebcam || !autoDetectScan) return
     const webcamScanInterval = setInterval(() => {
       runAiAnalysis()
     }, 7000)
     return () => clearInterval(webcamScanInterval)
-  }, [useWebcam, autoDetectEnabled, runAiAnalysis])
+  }, [useWebcam, autoDetectScan, runAiAnalysis])
 
   // Webcam activation
   const toggleWebcam = async () => {
@@ -375,7 +393,7 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
           progress += direction
 
           // Auto-trigger detection and Telegram alert when vehicle approaches close range (~12m)
-          if (autoDetectEnabled && !hasTriggeredPassRef.current && progress >= 0.7 && direction > 0) {
+          if (autoDetectScan && !hasTriggeredPassRef.current && progress >= 0.7 && direction > 0) {
             hasTriggeredPassRef.current = true
             const currentPlate = customPlateInput || ROTATING_FLEET[fleetIndexRef.current % ROTATING_FLEET.length]
             runAiAnalysis(currentPlate)
@@ -616,7 +634,7 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
     currentCamera,
     customPlateInput,
     useWebcam,
-    autoDetectEnabled,
+    autoDetectScan,
     runAiAnalysis,
   ])
 
@@ -735,10 +753,14 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
         <div className="absolute top-3 right-3 flex items-center gap-2 z-10 flex-wrap justify-end">
           <Badge
             variant="outline"
-            className="bg-black/70 backdrop-blur-md border-sky-500/60 text-sky-400 font-mono text-xs px-2.5 py-1 flex items-center gap-1.5"
+            className={`backdrop-blur-md font-mono text-xs px-2.5 py-1 flex items-center gap-1.5 transition-all ${
+              autoTelegram
+                ? 'bg-sky-600/90 border-sky-400 text-white font-bold'
+                : 'bg-black/70 border-zinc-700 text-zinc-400'
+            }`}
           >
-            <Send className="w-3 h-3 text-sky-400 animate-pulse" />
-            AUTO-TELEGRAM: {autoDetectEnabled ? 'BẬT' : 'TẮT'}
+            <Send className={`w-3 h-3 ${autoTelegram ? 'text-white animate-pulse' : 'text-zinc-500'}`} />
+            TELEGRAM AUTO: {autoTelegram ? 'BẬT' : 'TẮT'}
           </Badge>
           <Badge
             variant="outline"
@@ -854,26 +876,26 @@ export function CameraLiveFeed({ currentCamera, onDetectionTriggered, userRole }
 
           <Button
             size="sm"
-            variant={autoDetectEnabled ? 'default' : 'outline'}
+            variant={autoTelegram ? 'default' : 'outline'}
             onClick={() => {
-              const nextVal = !autoDetectEnabled
-              setAutoDetectEnabled(nextVal)
+              const nextVal = !autoTelegram
+              handleToggleAutoTelegram(nextVal)
               if (nextVal) {
-                toast.success('Đã BẬT tự động nhận diện xe & gửi báo cáo Telegram!')
+                toast.success('Đã BẬT tự động gửi báo cáo qua Telegram!')
               } else {
-                toast.info('Đã tạm dừng tự động báo Telegram')
+                toast.info('Đã TẮT tự động gửi Telegram (Bạn vẫn có thể bấm nút gửi báo cáo thủ công)')
               }
             }}
-            className={`flex-1 sm:flex-initial h-9 px-3 ${
-              autoDetectEnabled
-                ? 'bg-sky-600 hover:bg-sky-700 text-white'
-                : 'border-sky-500/30 text-sky-500 hover:bg-sky-500/10'
+            className={`flex-1 sm:flex-initial h-9 px-3 transition-all ${
+              autoTelegram
+                ? 'bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-xs'
+                : 'border-zinc-700 bg-muted/40 text-muted-foreground hover:text-foreground hover:border-sky-500/50'
             }`}
-            title="Tự động nhận diện biển số & gửi thông báo Telegram khi xe vào camera"
+            title="Bật/Tắt tự động gửi thông báo Telegram khi xe đi qua trạm cân"
           >
-            <Send className={`w-3.5 h-3.5 mr-1.5 ${autoDetectEnabled ? 'animate-pulse' : ''}`} />
+            <Send className={`w-3.5 h-3.5 mr-1.5 ${autoTelegram ? 'animate-pulse text-white' : 'text-zinc-400'}`} />
             <span className="text-xs font-semibold">
-              {autoDetectEnabled ? 'Auto Telegram: BẬT' : 'Auto Telegram: TẮT'}
+              Báo Telegram: {autoTelegram ? 'BẬT' : 'TẮT'}
             </span>
           </Button>
 

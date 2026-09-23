@@ -160,7 +160,7 @@ export const INITIAL_SUPABASE: SupabaseConfig = {
 export const INITIAL_TELEGRAM: TelegramConfig = {
   botToken: process.env.TELEGRAM_BOT_TOKEN || '',
   chatId: process.env.TELEGRAM_CHAT_ID || '',
-  enabled: true,
+  enabled: false,
   notifyOnAllVehicles: true,
 }
 

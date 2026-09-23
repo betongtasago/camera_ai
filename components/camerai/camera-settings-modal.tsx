@@ -132,7 +132,7 @@ export function CameraSettingsModal({
   const [tgToken, setTgToken] = useState('')
   const [tgChatId, setTgChatId] = useState('')
   const [showTgToken, setShowTgToken] = useState(false)
-  const [tgEnabled, setTgEnabled] = useState(true)
+  const [tgEnabled, setTgEnabled] = useState(false)
   const [tgNotifyAll, setTgNotifyAll] = useState(true)
   const [isTestingTg, setIsTestingTg] = useState(false)
   const [isSavingTg, setIsSavingTg] = useState(false)
@@ -171,7 +171,7 @@ export function CameraSettingsModal({
         if (data.config) {
           setTgToken(data.config.rawToken || '')
           setTgChatId(data.config.chatId || '')
-          setTgEnabled(data.config.enabled ?? true)
+          setTgEnabled(data.config.enabled ?? false)
           setTgNotifyAll(data.config.notifyOnAllVehicles ?? true)
         }
       })

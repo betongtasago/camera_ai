@@ -111,10 +111,16 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
                     className={
                       currentUser.role === 'admin'
                         ? 'bg-primary/20 text-primary border-primary/30 text-[10px]'
-                        : 'bg-muted text-muted-foreground border-border text-[10px]'
+                        : currentUser.role === 'operator'
+                          ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30 text-[10px]'
+                          : 'bg-sky-500/20 text-sky-500 border-sky-500/30 text-[10px]'
                     }
                   >
-                    {currentUser.role === 'admin' ? 'QUẢN TRỊ VIÊN (ADMIN)' : 'GIÁM SÁT VIÊN (OPERATOR)'}
+                    {currentUser.role === 'admin'
+                      ? 'QUẢN TRỊ VIÊN (ADMIN)'
+                      : currentUser.role === 'operator'
+                        ? 'GIÁM SÁT VIÊN (OPERATOR)'
+                        : 'THÀNH VIÊN (MEMBER - CHỈ XEM CAM)'}
                   </Badge>
                 </div>
               </div>
@@ -125,10 +131,14 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
                 <span>
                   ✓ Bạn có quyền thêm, sửa, xóa danh mục xe đăng ký và cấu hình thông số kỹ thuật camera IP & Supabase.
                 </span>
-              ) : (
+              ) : currentUser.role === 'operator' ? (
                 <span>
                   ✓ Bạn đang ở chế độ Giám sát: Có thể xem trực tiếp camera AI, đối soát xe vào cổng và phát lệnh mở
                   Barie.
+                </span>
+              ) : (
+                <span>
+                  ✓ Bạn đang ở chế độ Thành viên (Member): Chỉ xem trực tiếp luồng camera AI. Danh mục xe, nhật ký và cấu hình hệ thống được ẩn an toàn.
                 </span>
               )}
             </div>
@@ -151,35 +161,50 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
               <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Đăng nhập nhanh để trải nghiệm:
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-14 flex flex-col items-start justify-center p-2 text-left bg-background hover:border-primary"
+                  className="h-14 flex flex-col items-start justify-center p-1.5 text-left bg-background hover:border-primary"
                   onClick={() => handleLogin(undefined, 'admin@camerai.vn', 'Admin@123456')}
                   disabled={isLoading}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
-                    <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                    Tài khoản Admin
+                  <div className="flex items-center gap-1 font-bold text-[11px] text-foreground">
+                    <ShieldCheck className="w-3 h-3 text-primary shrink-0" />
+                    Admin
                   </div>
-                  <span className="text-[10px] text-muted-foreground">Toàn quyền thêm xe & cài đặt</span>
+                  <span className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">Toàn quyền</span>
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-14 flex flex-col items-start justify-center p-2 text-left bg-background hover:border-primary"
+                  className="h-14 flex flex-col items-start justify-center p-1.5 text-left bg-background hover:border-primary"
                   onClick={() => handleLogin(undefined, 'operator@camerai.vn', 'Operator@123456')}
                   disabled={isLoading}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    Giám sát viên
+                  <div className="flex items-center gap-1 font-bold text-[11px] text-foreground">
+                    <UserCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+                    Giám sát
                   </div>
-                  <span className="text-[10px] text-muted-foreground">Xem camera & mở Barie</span>
+                  <span className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">Xem & Mở Barie</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-14 flex flex-col items-start justify-center p-1.5 text-left bg-background hover:border-sky-500"
+                  onClick={() => handleLogin(undefined, 'member@camerai.vn', 'Member@123456')}
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center gap-1 font-bold text-[11px] text-foreground">
+                    <User className="w-3 h-3 text-sky-500 shrink-0" />
+                    Member
+                  </div>
+                  <span className="text-[9px] text-sky-600 dark:text-sky-400 mt-0.5 line-clamp-1">Chỉ xem Cam</span>
                 </Button>
               </div>
             </div>

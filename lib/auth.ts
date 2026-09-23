@@ -30,7 +30,35 @@ export const DEFAULT_USERS: Array<User & { passwordHash: string; salt: string }>
     passwordHash: 'a571c35c91122a2ff8f758acfb0323381e4b971e4ebfb6975a5e3056157e3f88',
     salt: 'camerai_salt_operator',
   },
+  {
+    id: 'usr_member_03',
+    email: 'member@camerai.vn',
+    name: 'Thành viên Xem Camera',
+    role: 'member',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    // Default password: Member@123456
+    passwordHash: '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
+    salt: 'camerai_salt_member',
+  },
 ]
+
+export type RegisteredUserRecord = User & { passwordHash: string; salt: string }
+
+declare global {
+  var __camerai_registered_users__: RegisteredUserRecord[] | undefined
+}
+
+export function getRegisteredUsers(): RegisteredUserRecord[] {
+  if (!globalThis.__camerai_registered_users__) {
+    globalThis.__camerai_registered_users__ = []
+  }
+  return globalThis.__camerai_registered_users__
+}
+
+export function addRegisteredUser(user: RegisteredUserRecord): void {
+  const users = getRegisteredUsers()
+  users.push(user)
+}
 
 // SHA-256 password hash using standard Web Crypto API
 export async function hashPassword(password: string, salt: string): Promise<string> {
@@ -62,7 +90,7 @@ export async function verifySessionToken(token: string): Promise<User | null> {
       id: payload.id as string,
       email: payload.email as string,
       name: payload.name as string,
-      role: payload.role as 'admin' | 'operator',
+      role: payload.role as 'admin' | 'operator' | 'member',
       avatarUrl: payload.avatarUrl as string | undefined,
     }
   } catch {
