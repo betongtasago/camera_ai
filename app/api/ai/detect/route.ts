@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const targetCamName = cameraName || 'CAM 01 - Cân xe / Khu sửa chữa'
     const targetLocation = locationTag || 'CAN - KHU SUA CHUA'
 
-    let detectedPlate = (simulatedPlate || '51N-043.57').toUpperCase().trim()
+    let detectedPlate = typeof simulatedPlate === 'string' ? simulatedPlate.toUpperCase().trim() : ''
     let detectedType = 'Xe bồn bê tông Howo 12m³'
     let brand = 'BÊ TÔNG XANH SÀI GÒN'
     let confidence = 98.6
