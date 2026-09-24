@@ -80,10 +80,12 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
-      try {
-        await dbDeleteDetectionLog(id)
-      } catch {
-        // Supabase optional
+      const databaseConfigured = Boolean(
+        process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      )
+      const deletedFromDatabase = await dbDeleteDetectionLog(id)
+      if (databaseConfigured && !deletedFromDatabase) {
+        return NextResponse.json({ error: 'Không thể xóa bản ghi khỏi cơ sở dữ liệu' }, { status: 503 })
       }
       deleteGlobalLog(id)
       broadcastRealtime({
@@ -94,10 +96,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Đã xóa bản ghi nhật ký' })
     }
 
-    try {
-      await dbClearDetectionLogs()
-    } catch {
-      // Supabase optional
+    const databaseConfigured = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    )
+    const clearedFromDatabase = await dbClearDetectionLogs()
+    if (databaseConfigured && !clearedFromDatabase) {
+      return NextResponse.json({ error: 'Không thể xóa nhật ký khỏi cơ sở dữ liệu' }, { status: 503 })
     }
     clearGlobalLogs()
     broadcastRealtime({

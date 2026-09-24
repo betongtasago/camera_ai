@@ -74,14 +74,12 @@ export function CameraSettingsModal({
   const [camName, setCamName] = useState(currentCamera.name)
   const [camLocation, setCamLocation] = useState(currentCamera.location)
   const [streamType, setStreamType] = useState(currentCamera.streamType)
-  const [ipAddress, setIpAddress] = useState(currentCamera.ipAddress || '192.168.1.108')
+  const [ipAddress, setIpAddress] = useState(currentCamera.ipAddress || '')
   const [port, setPort] = useState(String(currentCamera.port || 554))
-  const [username, setUsername] = useState(currentCamera.username || 'admin')
+  const [username, setUsername] = useState(currentCamera.username || '')
   const [password, setPassword] = useState(currentCamera.password || '')
   const [showPassword, setShowPassword] = useState(false)
-  const [streamUrl, setStreamUrl] = useState(
-    currentCamera.streamUrl || 'rtsp://admin:••••••••@192.168.1.108:554/Streaming/Channels/101',
-  )
+  const [streamUrl, setStreamUrl] = useState(currentCamera.streamUrl || '')
   const [autoZoom, setAutoZoom] = useState(currentCamera.autoZoomPlate)
   const [aiDetection, setAiDetection] = useState(currentCamera.aiDetectionEnabled)
 
@@ -102,14 +100,11 @@ export function CameraSettingsModal({
       setCamName(currentCamera.name)
       setCamLocation(currentCamera.location)
       setStreamType(currentCamera.streamType)
-      setIpAddress(currentCamera.ipAddress || '192.168.1.108')
+      setIpAddress(currentCamera.ipAddress || '')
       setPort(String(currentCamera.port || 554))
-      setUsername(currentCamera.username || 'admin')
+      setUsername(currentCamera.username || '')
       setPassword(currentCamera.password || '')
-      setStreamUrl(
-        currentCamera.streamUrl ||
-          `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
-      )
+      setStreamUrl(currentCamera.streamUrl || '')
       setAutoZoom(currentCamera.autoZoomPlate)
       setAiDetection(currentCamera.aiDetectionEnabled)
       setCameraTestResult(null)
@@ -750,10 +745,11 @@ export function CameraSettingsModal({
                     setIsCreatingNew(true)
                     setCamName(`CAM 0${cameras.length + 1} - Lối Vào Cổng Phụ`)
                     setCamLocation('CAN - CONG PHU')
-                    setIpAddress('192.168.1.109')
+                    setIpAddress('')
                     setPort('554')
-                    setUsername('admin')
-                    setStreamUrl('rtsp://admin:••••••••@192.168.1.109:554/Streaming/Channels/101')
+                    setUsername('')
+                    setPassword('')
+                    setStreamUrl('')
                     setCameraTestResult(null)
                   }}
                   className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
@@ -835,7 +831,7 @@ export function CameraSettingsModal({
                 <Input
                   value={ipAddress}
                   onChange={(e) => setIpAddress(e.target.value)}
-                  placeholder="192.168.1.108"
+                  placeholder="Địa chỉ IP hoặc tên miền camera"
                   className="font-mono text-sm"
                 />
               </div>
@@ -893,7 +889,7 @@ export function CameraSettingsModal({
               <Input
                 value={streamUrl}
                 onChange={(e) => setStreamUrl(e.target.value)}
-                placeholder="rtsp://admin:pass@192.168.1.108:554/Streaming/Channels/101"
+                placeholder="rtsp://user:password@camera-host:554/stream"
                 className="font-mono text-xs text-foreground bg-muted/30"
               />
             </div>

@@ -621,7 +621,7 @@ export function CameraLiveFeed({
       ctx.font = 'bold 12px "Courier New", monospace'
       ctx.textAlign = 'right'
       ctx.fillText(
-        `● LIVE IP: ${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554} [${(currentCamera.streamType || 'RTSP').toUpperCase()}]`,
+        `● LIVE ${currentCamera.ipAddress ? `IP: ${currentCamera.ipAddress}:${currentCamera.port || 554}` : 'SIGNAL'} [${(currentCamera.streamType || 'RTSP').toUpperCase()}]`,
         w - 24,
         31,
       )
@@ -706,13 +706,13 @@ export function CameraLiveFeed({
 
             <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground font-mono flex-wrap">
               <span className="text-foreground font-semibold">
-                IP: {currentCamera.ipAddress || '192.168.1.108'}:{currentCamera.port || 554}
+                {currentCamera.ipAddress
+                  ? `IP: ${currentCamera.ipAddress}:${currentCamera.port || 554}`
+                  : 'Chưa cấu hình địa chỉ camera'}
               </span>
               <span>•</span>
               <span className="truncate max-w-[280px] sm:max-w-md" title={currentCamera.streamUrl}>
-                Luồng:{' '}
-                {currentCamera.streamUrl ||
-                  `rtsp://${currentCamera.ipAddress}:${currentCamera.port}/Streaming/Channels/101`}
+                Luồng: {currentCamera.streamUrl || 'Chưa cấu hình link stream'}
               </span>
               <span>•</span>
               <span className="text-emerald-500 font-sans font-medium">{currentCamera.location}</span>
@@ -809,7 +809,10 @@ export function CameraLiveFeed({
           <span className="hidden sm:inline">|</span>
           <span className="hidden sm:inline">Tốc độ ước tính: ~16 km/h</span>
           <span className="hidden md:inline">|</span>
-          <span className="hidden md:inline">Camera IP: {currentCamera.ipAddress || '192.168.1.108:554'}</span>
+          <span className="hidden md:inline">
+            Camera IP:{' '}
+            {currentCamera.ipAddress ? `${currentCamera.ipAddress}:${currentCamera.port || 554}` : 'Chưa cấu hình'}
+          </span>
         </div>
 
         {/* Detection Match Overlay (Floating Card) */}

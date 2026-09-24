@@ -88,8 +88,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Construct standard RTSP URL if not provided
-    const resolvedStreamUrl =
-      streamUrl?.trim() || `rtsp://${username || 'admin'}:••••••••@${targetIp}:${targetPort}/Streaming/Channels/101`
+    const resolvedStreamUrl = streamUrl?.trim()
+    if (!resolvedStreamUrl) {
+      return NextResponse.json({ success: false, error: 'Chưa cấu hình link stream cho camera' }, { status: 400 })
+    }
 
     return NextResponse.json({
       success: true,
