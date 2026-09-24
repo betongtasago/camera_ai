@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DetectionResult, Vehicle, CameraConfig } from '@/lib/types'
 import { toast } from 'sonner'
+import Hls from 'hls.js'
 
 const ROTATING_FLEET = ['51N-043.57', '50H-123.45', '60C-892.11', '51D-998.12', '29C-556.78']
 
@@ -54,8 +55,10 @@ export function CameraLiveFeed({
   const [isPlaying, setIsPlaying] = useState(true)
   const hasRealSignal = currentCamera.isOnline === true && currentCamera.streamType !== 'simulation'
   const browserStreamUrl = currentCamera.streamUrl?.trim() || ''
-  const canRenderBrowserStream =
-    hasRealSignal && /^(https?:\/\/)/i.test(browserStreamUrl) && currentCamera.streamType !== 'rtsp'
+  const isMjpegStream = currentCamera.streamType === 'mjpeg'
+  const isHlsStream = currentCamera.streamType === 'hls' || /\.m3u8(?:$|\?)/i.test(browserStreamUrl)
+  const canRenderBrowserStream = hasRealSignal && /^(https?:\/\/)/i.test(browserStreamUrl)
+  const [streamError, setStreamError] = useState(false)
   const [isApproaching, setIsApproaching] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [zoomEnabled, setZoomEnabled] = useState(true)
@@ -88,6 +91,32 @@ export function CameraLiveFeed({
   const [isPinging, setIsPinging] = useState(false)
   const [pingLatency, setPingLatency] = useState<number | null>(14)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'checking' | 'error'>('connected')
+
+  useEffect(() => {
+    setStreamError(false)
+    if (!canRenderBrowserStream || !isHlsStream || !videoRef.current) return
+
+    const video = videoRef.current
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = browserStreamUrl
+      return
+    }
+    if (!Hls.isSupported()) {
+      setStreamError(true)
+      return
+    }
+
+    const hls = new Hls({ enableWorker: true, lowLatencyMode: true })
+    hls.loadSource(browserStreamUrl)
+    hls.attachMedia(video)
+    hls.on(Hls.Events.ERROR, (_event, data) => {
+      if (data.fatal) setStreamError(true)
+    })
+
+    return () => {
+      hls.destroy()
+    }
+  }, [browserStreamUrl, canRenderBrowserStream, isHlsStream])
 
   const handlePingCamera = async () => {
     setIsPinging(true)
@@ -747,24 +776,45 @@ export function CameraLiveFeed({
         className="relative w-full min-w-0 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
       >
         {/* Real Canvas Stream */}
-        {useWebcam || canRenderBrowserStream ? (
+        {useWebcam ? (
           <video
             ref={videoRef}
-            src={useWebcam ? undefined : browserStreamUrl}
             autoPlay
             playsInline
             muted
             controls={false}
-            onError={() => toast.error('Không thể phát luồng camera trong trình duyệt')}
+            onError={() => setStreamError(true)}
+            className="w-full h-full object-cover block"
+          />
+        ) : canRenderBrowserStream && isMjpegStream ? (
+          <img
+            src={browserStreamUrl}
+            alt={`Luồng trực tiếp ${currentCamera.name}`}
+            onError={() => setStreamError(true)}
+            className="w-full h-full object-cover block"
+          />
+        ) : canRenderBrowserStream ? (
+          <video
+            ref={videoRef}
+            src={isHlsStream ? undefined : browserStreamUrl}
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            onError={() => setStreamError(true)}
             className="w-full h-full object-cover block"
           />
         ) : (
-          <canvas
-            ref={canvasRef}
-            width={1280}
-            height={720}
-            className="w-full h-full object-cover block cursor-crosshair"
-          />
+          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-400">
+            {currentCamera.streamType === 'rtsp'
+              ? 'RTSP đã kết nối nhưng trình duyệt cần URL gateway HLS, MJPEG hoặc WebRTC để hiển thị hình ảnh.'
+              : 'Chưa có URL luồng trình duyệt hợp lệ.'}
+          </div>
+        )}
+        {streamError && canRenderBrowserStream && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-6 text-center text-sm text-red-300">
+            Không thể phát URL gateway. Kiểm tra gateway có cho phép HTTPS/CORS và đang hoạt động.
+          </div>
         )}
 
         {/* Automated Telegram Notification Pop-up Banner */}
@@ -819,7 +869,7 @@ export function CameraLiveFeed({
           <span className={`w-2 h-2 rounded-full ${hasRealSignal ? 'bg-emerald-400 animate-ping' : 'bg-red-500'}`} />
           <span>Khoảng cách: {vehicleDistance}m</span>
           <span className="hidden sm:inline">|</span>
-          <span className="hidden sm:inline">Tốc độ ước tính: ~16 km/h</span>
+          <span className="hidden sm:inline">T���c độ ước tính: ~16 km/h</span>
           <span className="hidden md:inline">|</span>
           <span className="hidden md:inline">
             Camera IP:{' '}
