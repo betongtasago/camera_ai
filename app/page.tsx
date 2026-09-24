@@ -42,7 +42,11 @@ import { toast } from 'sonner'
 
 export default function HomePage() {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'monitor' | 'vehicles' | 'logs' | 'settings'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'vehicles' | 'logs' | 'settings'>(() => {
+    if (typeof window === 'undefined') return 'monitor'
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    return tab === 'vehicles' || tab === 'logs' || tab === 'settings' ? tab : 'monitor'
+  })
 
   // Auth & User state
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -65,6 +69,18 @@ export default function HomePage() {
   // Fleet pre-fill navigation state
   const [prefillPlate, setPrefillPlate] = useState<string>('')
   const [autoOpenVehicleModal, setAutoOpenVehicleModal] = useState<boolean>(false)
+  const [vehicleRefreshKey, setVehicleRefreshKey] = useState(0)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (activeTab === 'monitor') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', activeTab)
+    }
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [activeTab])
 
   // Fetch cameras from server/Supabase
   const fetchCameras = useCallback(async () => {
@@ -136,6 +152,7 @@ export default function HomePage() {
       toast.info('Cấu hình Camera vừa được cập nhật bởi quản trị viên (đồng bộ tức thời)')
     },
     onVehiclesUpdated: (msg) => {
+      setVehicleRefreshKey((value) => value + 1)
       if (msg.type === 'vehicles_updated') {
         if (msg.action === 'create') {
           toast.info('Quản trị viên vừa thêm xe mới vào danh mục (đã đồng bộ tức thời)')
@@ -659,6 +676,7 @@ export default function HomePage() {
         {/* TAB 2: REGISTERED FLEET (BIỂN SỐ, TÀI XẾ, LOẠI XE) - Hidden for Member */}
         {activeTab === 'vehicles' && !isMember && (
           <VehicleManagement
+            key={vehicleRefreshKey}
             userRole={currentUser?.role}
             initialPlate={prefillPlate}
             autoOpenCreate={autoOpenVehicleModal}
