@@ -20,7 +20,7 @@ export const DEFAULT_USERS: Array<User & { passwordHash: string; salt: string }>
     role: 'admin',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     // Default password: Admin@123456
-    passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
+    passwordHash: 'a4fd9cd312bc9eb8de76aa09187e4625746214f9200b94844b01ecc3beb27684',
     salt: 'camerai_salt_admin',
   },
   {
@@ -30,7 +30,7 @@ export const DEFAULT_USERS: Array<User & { passwordHash: string; salt: string }>
     role: 'operator',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     // Default password: Operator@123456
-    passwordHash: 'a571c35c91122a2ff8f758acfb0323381e4b971e4ebfb6975a5e3056157e3f88',
+    passwordHash: '028c5eb74f659477f4368f2b3d31e06b868b19ac21b89d0e7897c6f8ed0f0b32',
     salt: 'camerai_salt_operator',
   },
   {
@@ -40,7 +40,7 @@ export const DEFAULT_USERS: Array<User & { passwordHash: string; salt: string }>
     role: 'member',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
     // Default password: Member@123456
-    passwordHash: '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
+    passwordHash: '9a29417571ab15f15e6470bf420509a077b9921b6b2bb590ddda7c669f7d2b78',
     salt: 'camerai_salt_member',
   },
 ]
