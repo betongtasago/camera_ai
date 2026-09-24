@@ -8,10 +8,10 @@ export const INITIAL_CAMERAS: CameraConfig[] = [
     name: 'CAM 01 - Cân xe / Khu sửa chữa',
     location: 'CAN - KHU SUA CHUA',
     streamType: 'rtsp',
-    streamUrl: 'rtsp://admin:CamerAI@2026@192.168.1.108:554/ch1/main',
-    ipAddress: '192.168.1.108',
+    streamUrl: '',
+    ipAddress: '',
     port: 554,
-    username: 'admin',
+    username: '',
     password: '••••••••',
     fps: 30,
     isOnline: false,
@@ -24,10 +24,10 @@ export const INITIAL_CAMERAS: CameraConfig[] = [
     name: 'CAM 02 - Trạm trộn Bê Tông Trung Tâm',
     location: 'Silo Xi Măng 1 & 2',
     streamType: 'rtsp',
-    streamUrl: 'rtsp://admin:CamerAI@2026@192.168.1.109:554/ch1/main',
-    ipAddress: '192.168.1.109',
+    streamUrl: '',
+    ipAddress: '',
     port: 554,
-    username: 'admin',
+    username: '',
     password: '••••••••',
     fps: 25,
     isOnline: false,
@@ -40,57 +40,21 @@ export const INITIAL_CAMERAS: CameraConfig[] = [
     name: 'CAM 03 - Cổng Xuất Bê Tông Ra Công Trường',
     location: 'Cổng chính Quốc Lộ 1A',
     streamType: 'simulation',
-    streamUrl: 'rtsp://admin:CamerAI@2026@192.168.1.110:554/ch1/main',
-    ipAddress: '192.168.1.110',
+    streamUrl: '',
+    ipAddress: '',
     port: 554,
-    username: 'admin',
+    username: '',
     password: '••••••••',
     fps: 30,
-    isOnline: true,
+    isOnline: false,
     aiDetectionEnabled: true,
     autoZoomPlate: true,
     createdAt: '2026-01-03T00:00:00Z',
   },
 ]
 
-export const INITIAL_EVENTS: DetectionResult[] = [
-  {
-    id: 'evt_01',
-    timestamp: '2026-09-23T16:36:08Z',
-    cameraId: 'cam_01',
-    cameraName: 'CAM 01 - Cân xe / Khu sửa chữa',
-    locationTag: 'CAN - KHU SUA CHUA',
-    plateNumber: '51N-043.57',
-    vehicleType: 'Xe bồn bê tông Howo 12m³',
-    confidence: 98.6,
-    isMatch: true,
-    matchedVehicle: INITIAL_VEHICLES[0],
-    status: 'passed',
-    details: {
-      color: 'Trắng / Xanh lá',
-      brand: 'BÊ TÔNG XANH SÀI GÒN / HOWO',
-      speedEstimate: '18 km/h',
-    },
-  },
-  {
-    id: 'evt_02',
-    timestamp: '2026-09-23T15:20:12Z',
-    cameraId: 'cam_01',
-    cameraName: 'CAM 01 - Cân xe / Khu sửa chữa',
-    locationTag: 'CAN - KHU SUA CHUA',
-    plateNumber: '50H-123.45',
-    vehicleType: 'Xe bồn Hyundai HD270 10m³',
-    confidence: 96.2,
-    isMatch: true,
-    matchedVehicle: INITIAL_VEHICLES[1],
-    status: 'passed',
-    details: {
-      color: 'Trắng',
-      brand: 'BÊ TÔNG XANH SÀI GÒN',
-      speedEstimate: '14 km/h',
-    },
-  },
-]
+// Detection history starts empty and is populated only by a real camera recognition event.
+export const INITIAL_EVENTS: DetectionResult[] = []
 
 export const INITIAL_SUPABASE: SupabaseConfig = {
   url: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co',
@@ -160,7 +124,12 @@ export function updateGlobalVehicle(vehicle: Vehicle): Vehicle | null {
 export function deleteGlobalVehicle(idOrPlate: string): boolean {
   const current = getGlobalVehicles()
   const initialLen = current.length
-  const cleanTarget = idOrPlate ? idOrPlate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+  const cleanTarget = idOrPlate
+    ? idOrPlate
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+    : ''
   globalThis.__cameraiVehicles = current.filter((v) => {
     if (v.id === idOrPlate) return false
     if (v.plateNumber === idOrPlate) return false

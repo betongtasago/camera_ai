@@ -52,7 +52,10 @@ export function CameraLiveFeed({
 
   // Stream state
   const [isPlaying, setIsPlaying] = useState(true)
-  const hasRealSignal = currentCamera.isOnline === true
+  const hasRealSignal = currentCamera.isOnline === true && currentCamera.streamType !== 'simulation'
+  const browserStreamUrl = currentCamera.streamUrl?.trim() || ''
+  const canRenderBrowserStream =
+    hasRealSignal && /^(https?:\/\/)/i.test(browserStreamUrl) && currentCamera.streamType !== 'rtsp'
   const [isApproaching, setIsApproaching] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [zoomEnabled, setZoomEnabled] = useState(true)
@@ -621,7 +624,7 @@ export function CameraLiveFeed({
       ctx.font = 'bold 12px "Courier New", monospace'
       ctx.textAlign = 'right'
       ctx.fillText(
-        `● LIVE IP: ${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554} [${(currentCamera.streamType || 'RTSP').toUpperCase()}]`,
+        `● LIVE ${currentCamera.ipAddress ? `IP: ${currentCamera.ipAddress}:${currentCamera.port || 554}` : 'SIGNAL'} [${(currentCamera.streamType || 'RTSP').toUpperCase()}]`,
         w - 24,
         31,
       )
@@ -677,17 +680,15 @@ export function CameraLiveFeed({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-sm text-foreground">
-                {currentCamera.name || 'CAM 01 - Cân Xe'}
-              </span>
+              <span className="font-bold text-sm text-foreground">{currentCamera.name || 'CAM 01 - Cân Xe'}</span>
               <Badge
                 variant="outline"
                 className={`text-[10px] font-mono px-2 py-0.5 border ${
                   connectionStatus === 'connected'
                     ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
                     : connectionStatus === 'checking'
-                    ? 'border-amber-500/30 text-amber-500 bg-amber-500/10'
-                    : 'border-red-500/30 text-red-500 bg-red-500/10'
+                      ? 'border-amber-500/30 text-amber-500 bg-amber-500/10'
+                      : 'border-red-500/30 text-red-500 bg-red-500/10'
                 }`}
               >
                 <span
@@ -698,8 +699,8 @@ export function CameraLiveFeed({
                 {connectionStatus === 'connected'
                   ? `ĐÃ KẾT NỐI CAMERA THEO CẤU HÌNH (${pingLatency || 14}ms)`
                   : connectionStatus === 'checking'
-                  ? 'ĐANG KIỂM TRA LUỒNG CAMERA...'
-                  : 'MẤT TÍN HIỆU CAMERA IP'}
+                    ? 'ĐANG KIỂM TRA LUỒNG CAMERA...'
+                    : 'MẤT TÍN HIỆU CAMERA IP'}
               </Badge>
               <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0.5 bg-muted">
                 {currentCamera.streamType.toUpperCase()}
@@ -708,16 +709,16 @@ export function CameraLiveFeed({
 
             <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground font-mono flex-wrap">
               <span className="text-foreground font-semibold">
-                IP: {currentCamera.ipAddress || '192.168.1.108'}:{currentCamera.port || 554}
+                {currentCamera.ipAddress
+                  ? `IP: ${currentCamera.ipAddress}:${currentCamera.port || 554}`
+                  : 'Chưa cấu hình địa chỉ camera'}
               </span>
               <span>•</span>
               <span className="truncate max-w-[280px] sm:max-w-md" title={currentCamera.streamUrl}>
-                Luồng: {currentCamera.streamUrl || `rtsp://${currentCamera.ipAddress}:${currentCamera.port}/Streaming/Channels/101`}
+                Luồng: {currentCamera.streamUrl || 'Chưa cấu hình link stream'}
               </span>
               <span>•</span>
-              <span className="text-emerald-500 font-sans font-medium">
-                {currentCamera.location}
-              </span>
+              <span className="text-emerald-500 font-sans font-medium">{currentCamera.location}</span>
             </div>
           </div>
         </div>
@@ -732,7 +733,9 @@ export function CameraLiveFeed({
             className="text-xs h-8 border-border hover:border-primary"
             title="Kiểm tra tín hiệu mạng tới Camera IP"
           >
-            <Activity className={`w-3.5 h-3.5 mr-1.5 ${isPinging ? 'animate-spin text-primary' : 'text-emerald-500'}`} />
+            <Activity
+              className={`w-3.5 h-3.5 mr-1.5 ${isPinging ? 'animate-spin text-primary' : 'text-emerald-500'}`}
+            />
             {isPinging ? 'Đang Kiểm Tra IP...' : 'Kiểm Tra Kết Nối IP'}
           </Button>
         </div>
@@ -741,18 +744,27 @@ export function CameraLiveFeed({
       {/* CCTV Viewport Container */}
       <div
         ref={containerRef}
-        className="relative w-full aspect-[16/9] bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
+        className="relative w-full min-w-0 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
       >
         {/* Real Canvas Stream */}
-        {!useWebcam ? (
+        {useWebcam || canRenderBrowserStream ? (
+          <video
+            ref={videoRef}
+            src={useWebcam ? undefined : browserStreamUrl}
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            onError={() => toast.error('Không thể phát luồng camera trong trình duyệt')}
+            className="w-full h-full object-cover block"
+          />
+        ) : (
           <canvas
             ref={canvasRef}
             width={1280}
             height={720}
             className="w-full h-full object-cover block cursor-crosshair"
           />
-        ) : (
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover block" />
         )}
 
         {/* Automated Telegram Notification Pop-up Banner */}
@@ -809,7 +821,10 @@ export function CameraLiveFeed({
           <span className="hidden sm:inline">|</span>
           <span className="hidden sm:inline">Tốc độ ước tính: ~16 km/h</span>
           <span className="hidden md:inline">|</span>
-          <span className="hidden md:inline">Camera IP: {currentCamera.ipAddress || '192.168.1.108:554'}</span>
+          <span className="hidden md:inline">
+            Camera IP:{' '}
+            {currentCamera.ipAddress ? `${currentCamera.ipAddress}:${currentCamera.port || 554}` : 'Chưa cấu hình'}
+          </span>
         </div>
 
         {/* Detection Match Overlay (Floating Card) */}
@@ -912,9 +927,7 @@ export function CameraLiveFeed({
             title="Bật/Tắt tự động gửi thông báo Telegram khi xe đi qua trạm cân"
           >
             <Send className={`w-3.5 h-3.5 mr-1.5 ${autoTelegram ? 'animate-pulse text-white' : 'text-zinc-400'}`} />
-            <span className="text-xs font-semibold">
-              Báo Telegram: {autoTelegram ? 'BẬT' : 'TẮT'}
-            </span>
+            <span className="text-xs font-semibold">Báo Telegram: {autoTelegram ? 'BẬT' : 'TẮT'}</span>
           </Button>
 
           <Button

@@ -54,9 +54,9 @@ export default function HomePage() {
   const [selectedCameraId, setSelectedCameraId] = useState<string>('cam_01')
 
   // Live detection & logs state
-  const [latestDetection, setLatestDetection] = useState<DetectionResult>(INITIAL_EVENTS[0])
+  const [latestDetection, setLatestDetection] = useState<DetectionResult | null>(INITIAL_EVENTS[0] || null)
   const [detectionLogs, setDetectionLogs] = useState<DetectionResult[]>(INITIAL_EVENTS)
-  const [todayStats, setTodayStats] = useState({ total: 48, passed: 45, warnings: 3 })
+  const [todayStats, setTodayStats] = useState({ total: 0, passed: 0, warnings: 0 })
   const [isMounted, setIsMounted] = useState(false)
 
   // Telegram auto notification setting: default is OFF per user requirement
@@ -87,16 +87,17 @@ export default function HomePage() {
       const res = await fetch('/api/events')
       if (res.ok) {
         const data = await res.json()
-        if (data.events && data.events.length > 0) {
-          setDetectionLogs(data.events)
-          setLatestDetection(data.events[0])
-          const passedCount = data.events.filter((e: DetectionResult) => e.isMatch).length
-          setTodayStats({
-            total: data.events.length,
-            passed: passedCount,
-            warnings: data.events.length - passedCount,
-          })
-        }
+        const events = Array.isArray(data.events) ? (data.events as DetectionResult[]) : []
+        setDetectionLogs(events)
+        setLatestDetection(events[0] || null)
+        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+        const todayEvents = events.filter(
+          (event) =>
+            new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(event.timestamp)) ===
+            todayKey,
+        )
+        const passedCount = todayEvents.filter((event) => event.isMatch).length
+        setTodayStats({ total: todayEvents.length, passed: passedCount, warnings: todayEvents.length - passedCount })
       }
     } catch {
       // Fallback to existing
@@ -147,15 +148,8 @@ export default function HomePage() {
     },
     onLogAdded: (log) => {
       setLatestDetection(log)
-      setDetectionLogs((prev) => {
-        if (prev.some((p) => p.id === log.id)) return prev
-        return [log, ...prev.slice(0, 49)]
-      })
-      setTodayStats((prev) => ({
-        total: prev.total + 1,
-        passed: log.isMatch ? prev.passed + 1 : prev.passed,
-        warnings: !log.isMatch ? prev.warnings + 1 : prev.warnings,
-      }))
+      setDetectionLogs((prev) => (prev.some((item) => item.id === log.id) ? prev : [log, ...prev.slice(0, 49)]))
+      fetchDetectionLogs()
     },
     onSettingsUpdated: (event) => {
       if (event.section === 'telegram') fetchTelegramSettings()
@@ -222,12 +216,8 @@ export default function HomePage() {
   // Handle incoming AI detection event
   const handleDetectionTriggered = (result: DetectionResult) => {
     setLatestDetection(result)
-    setDetectionLogs((prev) => [result, ...prev.slice(0, 49)])
-    setTodayStats((prev) => ({
-      total: prev.total + 1,
-      passed: result.isMatch ? prev.passed + 1 : prev.passed,
-      warnings: !result.isMatch ? prev.warnings + 1 : prev.warnings,
-    }))
+    setDetectionLogs((prev) => (prev.some((item) => item.id === result.id) ? prev : [result, ...prev.slice(0, 49)]))
+    fetchDetectionLogs()
   }
 
   // Send manual Telegram alert for latest detected vehicle
@@ -240,7 +230,8 @@ export default function HomePage() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast.success(`Đã gửi thông báo xe ${latestDetection.plateNumber} qua Telegram!`)
+        if (latestDetection)
+          toast.success(`Đã gửi thông báo xe ${latestDetection?.plateNumber || 'Chưa nhận dạng'} qua Telegram!`)
       } else {
         toast.error(data.error || 'Lỗi gửi tin Telegram')
       }
@@ -265,18 +256,18 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground pb-16 md:pb-6">
+    <div className="min-h-dvh min-w-0 overflow-x-hidden flex flex-col bg-background text-foreground pb-20 md:pb-6">
       {/* Top Application Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-card/90 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 min-h-16 py-2 flex items-center justify-between gap-2 sm:gap-3">
           {/* Logo & Status */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="size-9 sm:size-10 shrink-0 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20">
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-extrabold text-sm sm:text-lg tracking-tight bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
                   TSG-TNT AI
                 </span>
                 <Badge
@@ -365,7 +356,7 @@ export default function HomePage() {
           </nav>
 
           {/* User & Theme Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
             {/* Realtime Sync Status Indicator */}
             <Badge
               variant="outline"
@@ -419,11 +410,7 @@ export default function HomePage() {
                           : 'ml-1.5 bg-sky-500/15 text-sky-500 border-sky-500/20 text-[9px] px-1 py-0'
                     }
                   >
-                    {currentUser.role === 'admin'
-                      ? 'ADMIN'
-                      : currentUser.role === 'operator'
-                        ? 'OPERATOR'
-                        : 'MEMBER'}
+                    {currentUser.role === 'admin' ? 'ADMIN' : currentUser.role === 'operator' ? 'OPERATOR' : 'MEMBER'}
                   </Badge>
                 </Button>
 
@@ -444,12 +431,12 @@ export default function HomePage() {
       </header>
 
       {/* Main Workspace Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col gap-6">
+      <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto p-2.5 sm:p-6 flex flex-col gap-4 sm:gap-6">
         {/* TAB 1: LIVE MONITOR (CAMERA & REAL-TIME FLEET MATCHING) */}
         {activeTab === 'monitor' && (
           <div className="flex flex-col gap-6">
             {/* Quick Camera Channel Bar on Mobile / Tablet */}
-            <div className="flex lg:hidden items-center justify-between gap-2 bg-card p-2.5 rounded-xl border border-border">
+            <div className="flex lg:hidden items-center justify-between gap-2 bg-card p-2.5 rounded-xl border border-border min-w-0">
               <span className="text-xs font-semibold text-muted-foreground">Kênh Camera:</span>
               <select
                 value={selectedCameraId}
@@ -465,24 +452,26 @@ export default function HomePage() {
             </div>
 
             {/* Layout: Video Viewport + Live Vehicle Inspection Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
               {/* Left Column: Live Camera Video / Simulation with AI Overlay */}
-              <div className="lg:col-span-8 flex flex-col gap-3">
-                {isAdmin && <CameraLiveFeed
-                  currentCamera={currentCamera}
-                  onDetectionTriggered={handleDetectionTriggered}
-                  userRole={currentUser?.role}
-                  telegramAutoNotify={telegramAutoNotify}
-                  onToggleTelegramAutoNotify={handleToggleTelegramAutoNotify}
-                />}
+              <div className="lg:col-span-8 min-w-0 flex flex-col gap-3">
+                {isAdmin && (
+                  <CameraLiveFeed
+                    currentCamera={currentCamera}
+                    onDetectionTriggered={handleDetectionTriggered}
+                    userRole={currentUser?.role}
+                    telegramAutoNotify={telegramAutoNotify}
+                    onToggleTelegramAutoNotify={handleToggleTelegramAutoNotify}
+                  />
+                )}
               </div>
 
               {/* Right Column: Live Detection & Fleet Verification Inspector */}
-              <div className={`lg:col-span-4 flex flex-col gap-4 ${!isAdmin ? 'hidden' : ''}`}>
+              <div className={`lg:col-span-4 min-w-0 flex flex-col gap-4 ${!isAdmin ? 'hidden' : ''}`}>
                 {/* Active Match Card */}
                 <div
                   className={`bg-card border rounded-xl p-4 sm:p-5 shadow-sm transition-all ${
-                    latestDetection.isMatch ? 'border-emerald-500/40' : 'border-amber-500/40'
+                    Boolean(latestDetection?.isMatch) ? 'border-emerald-500/40' : 'border-amber-500/40'
                   }`}
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-border">
@@ -492,7 +481,7 @@ export default function HomePage() {
                         Xe Vừa Đi Qua Camera
                       </span>
                     </div>
-                    {latestDetection.isMatch ? (
+                    {Boolean(latestDetection?.isMatch) ? (
                       <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         ĐÃ ĐĂNG KÝ
@@ -511,10 +500,10 @@ export default function HomePage() {
                       BIỂN SỐ NHẬN DẠNG (OCR)
                     </span>
                     <span className="font-mono text-2xl sm:text-3xl font-black text-white tracking-widest">
-                      {latestDetection.plateNumber}
+                      {latestDetection?.plateNumber || 'Chưa nhận dạng'}
                     </span>
                     <span className="text-[11px] font-mono text-emerald-400 mt-1">
-                      Độ chính xác AI: {latestDetection.confidence}%
+                      Độ chính xác AI: {latestDetection?.confidence ?? 0}%
                     </span>
                   </div>
 
@@ -523,33 +512,47 @@ export default function HomePage() {
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Tên tài xế:</span>
                       <span className="font-semibold text-foreground">
-                        {latestDetection.matchedVehicle?.driverName || '— Chưa đăng ký trong hệ thống —'}
+                        {latestDetection?.matchedVehicle?.driverName || '— Chưa đăng ký trong hệ thống —'}
                       </span>
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Loại phương tiện:</span>
                       <span className="font-medium text-foreground">
-                        {latestDetection.matchedVehicle?.vehicleType || latestDetection.vehicleType}
+                        {latestDetection?.matchedVehicle?.vehicleType ||
+                          latestDetection?.vehicleType ||
+                          'Chưa nhận dạng'}
                       </span>
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Đơn vị / Đội xe:</span>
                       <span className="font-medium text-foreground">
-                        {latestDetection.matchedVehicle?.company || latestDetection.details?.brand || 'Khách vãng lai'}
+                        {latestDetection?.matchedVehicle?.company ||
+                          latestDetection?.details?.brand ||
+                          'Khách vãng lai'}
                       </span>
                     </div>
 
                     <div className="flex justify-between py-1 border-b border-border/50">
                       <span className="text-muted-foreground">Camera ghi nhận:</span>
-                      <span className="font-mono text-foreground font-semibold">{latestDetection.locationTag}</span>
+                      <span className="font-mono text-foreground font-semibold">
+                        {latestDetection?.locationTag || 'Chưa có camera nhận dạng'}
+                      </span>
                     </div>
 
                     <div className="flex justify-between py-1">
                       <span className="text-muted-foreground">Thời gian:</span>
                       <span className="font-mono text-muted-foreground" suppressHydrationWarning>
-                        {isMounted ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Etc/GMT-8', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(latestDetection.timestamp)) : '--:--:--'}
+                        {isMounted
+                          ? new Intl.DateTimeFormat('vi-VN', {
+                              timeZone: 'Etc/GMT-8',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false,
+                            }).format(new Date(latestDetection?.timestamp || Date.now()))
+                          : '--:--:--'}
                       </span>
                     </div>
                   </div>
@@ -561,9 +564,7 @@ export default function HomePage() {
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                            telegramAutoNotify
-                              ? 'bg-sky-500/20 text-sky-500'
-                              : 'bg-muted text-muted-foreground'
+                            telegramAutoNotify ? 'bg-sky-500/20 text-sky-500' : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           <Send className={`w-3.5 h-3.5 ${telegramAutoNotify ? 'animate-pulse' : ''}`} />
@@ -571,9 +572,7 @@ export default function HomePage() {
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground">Tự động báo Telegram</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {telegramAutoNotify
-                              ? 'Đang BẬT: Báo bot khi có xe'
-                              : 'Đang TẮT: Bấm nút để gửi thủ công'}
+                            {telegramAutoNotify ? 'Đang BẬT: Báo bot khi có xe' : 'Đang TẮT: Bấm nút để gửi thủ công'}
                           </span>
                         </div>
                       </div>
@@ -602,22 +601,26 @@ export default function HomePage() {
                       </Button>
                     </div>
 
-                    {isAdmin && <Button
-                      onClick={handleSendTelegram}
-                      className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      GỬI BÁO CÁO QUA TELEGRAM
-                    </Button>}
+                    {isAdmin && (
+                      <Button
+                        onClick={handleSendTelegram}
+                        className="w-full h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        GỬI BÁO CÁO QUA TELEGRAM
+                      </Button>
+                    )}
 
-                    {!latestDetection.isMatch && !isMember && (
+                    {latestDetection && !latestDetection.isMatch && !isMember && (
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setPrefillPlate(latestDetection.plateNumber)
+                          setPrefillPlate(latestDetection?.plateNumber || 'Chưa nhận dạng')
                           setAutoOpenVehicleModal(true)
                           setActiveTab('vehicles')
-                          toast.info(`Chuyển sang trang Thêm xe cho biển số: ${latestDetection.plateNumber}`)
+                          toast.info(
+                            `Chuyển sang trang Thêm xe cho biển số: ${latestDetection?.plateNumber || 'Chưa nhận dạng'}`,
+                          )
                         }}
                         className="w-full h-9 text-xs text-primary border-primary/30 hover:bg-primary/10 font-semibold"
                       >

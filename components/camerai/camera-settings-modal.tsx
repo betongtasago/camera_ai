@@ -74,14 +74,12 @@ export function CameraSettingsModal({
   const [camName, setCamName] = useState(currentCamera.name)
   const [camLocation, setCamLocation] = useState(currentCamera.location)
   const [streamType, setStreamType] = useState(currentCamera.streamType)
-  const [ipAddress, setIpAddress] = useState(currentCamera.ipAddress || '192.168.1.108')
+  const [ipAddress, setIpAddress] = useState(currentCamera.ipAddress || '')
   const [port, setPort] = useState(String(currentCamera.port || 554))
-  const [username, setUsername] = useState(currentCamera.username || 'admin')
+  const [username, setUsername] = useState(currentCamera.username || '')
   const [password, setPassword] = useState(currentCamera.password || '')
   const [showPassword, setShowPassword] = useState(false)
-  const [streamUrl, setStreamUrl] = useState(
-    currentCamera.streamUrl || 'rtsp://admin:••••••••@192.168.1.108:554/Streaming/Channels/101',
-  )
+  const [streamUrl, setStreamUrl] = useState(currentCamera.streamUrl || '')
   const [autoZoom, setAutoZoom] = useState(currentCamera.autoZoomPlate)
   const [aiDetection, setAiDetection] = useState(currentCamera.aiDetectionEnabled)
 
@@ -102,14 +100,11 @@ export function CameraSettingsModal({
       setCamName(currentCamera.name)
       setCamLocation(currentCamera.location)
       setStreamType(currentCamera.streamType)
-      setIpAddress(currentCamera.ipAddress || '192.168.1.108')
+      setIpAddress(currentCamera.ipAddress || '')
       setPort(String(currentCamera.port || 554))
-      setUsername(currentCamera.username || 'admin')
+      setUsername(currentCamera.username || '')
       setPassword(currentCamera.password || '')
-      setStreamUrl(
-        currentCamera.streamUrl ||
-          `rtsp://${currentCamera.username || 'admin'}:••••••••@${currentCamera.ipAddress || '192.168.1.108'}:${currentCamera.port || 554}/Streaming/Channels/101`,
-      )
+      setStreamUrl(currentCamera.streamUrl || '')
       setAutoZoom(currentCamera.autoZoomPlate)
       setAiDetection(currentCamera.aiDetectionEnabled)
       setCameraTestResult(null)
@@ -750,10 +745,11 @@ export function CameraSettingsModal({
                     setIsCreatingNew(true)
                     setCamName(`CAM 0${cameras.length + 1} - Lối Vào Cổng Phụ`)
                     setCamLocation('CAN - CONG PHU')
-                    setIpAddress('192.168.1.109')
+                    setIpAddress('')
                     setPort('554')
-                    setUsername('admin')
-                    setStreamUrl('rtsp://admin:••••••••@192.168.1.109:554/Streaming/Channels/101')
+                    setUsername('')
+                    setPassword('')
+                    setStreamUrl('')
                     setCameraTestResult(null)
                   }}
                   className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
@@ -803,241 +799,248 @@ export function CameraSettingsModal({
                 />
               </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Vị trí hiển thị trên OSD *</Label>
-              <Input
-                value={camLocation}
-                onChange={(e) => setCamLocation(e.target.value)}
-                placeholder="CAN - KHU SUA CHUA"
-                className="font-mono text-sm uppercase"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Giao thức truyền luồng</Label>
-              <select
-                value={streamType}
-                onChange={(e) => setStreamType(e.target.value as any)}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none"
-              >
-                <option value="simulation">Mô phỏng Bãi cân AI (Khuyến nghị)</option>
-                <option value="rtsp">RTSP IP Camera Trực Tiếp</option>
-                <option value="mjpeg">MJPEG Stream</option>
-                <option value="hls">HLS / WebRTC</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Địa chỉ IP Camera</Label>
-              <Input
-                value={ipAddress}
-                onChange={(e) => setIpAddress(e.target.value)}
-                placeholder="192.168.1.108"
-                className="font-mono text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Cổng kết nối (Port)</Label>
-              <Input
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                placeholder="554"
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Tài khoản RTSP Camera (Username)</Label>
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
-                className="text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Mật khẩu Camera (Được mã hóa)</Label>
-              <div className="relative">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Vị trí hiển thị trên OSD *</Label>
                 <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mật khẩu bảo vệ camera"
-                  className="pr-10 text-sm font-mono"
+                  value={camLocation}
+                  onChange={(e) => setCamLocation(e.target.value)}
+                  placeholder="CAN - KHU SUA CHUA"
+                  className="font-mono text-sm uppercase"
+                  required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Giao thức truyền luồng</Label>
+                <select
+                  value={streamType}
+                  onChange={(e) => setStreamType(e.target.value as any)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold">RTSP Stream Path / URL đầy đủ</Label>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {ipAddress}:{port}
-              </span>
-            </div>
-            <Input
-              value={streamUrl}
-              onChange={(e) => setStreamUrl(e.target.value)}
-              placeholder="rtsp://admin:pass@192.168.1.108:554/Streaming/Channels/101"
-              className="font-mono text-xs text-foreground bg-muted/30"
-            />
-          </div>
-
-          {/* Test Camera Connection Button & Result Panel */}
-          <div className="border border-border/80 rounded-xl p-4 bg-muted/30 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-primary" />
-                  Kiểm Tra Kết Nối Camera IP Thực Tế
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Gửi gói tin ping và kiểm tra cổng RTSP ({ipAddress}:{port}) theo cấu hình
-                </div>
+                  <option value="simulation">Mô phỏng Bãi cân AI (Khuyến nghị)</option>
+                  <option value="rtsp">RTSP IP Camera Trực Tiếp</option>
+                  <option value="mjpeg">MJPEG Stream</option>
+                  <option value="hls">HLS / WebRTC</option>
+                </select>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTestCameraConnection}
-                disabled={isTestingCamera || !ipAddress.trim()}
-                className="text-xs border-primary/40 hover:bg-primary/10 text-primary font-semibold h-8"
-              >
-                <Radio className={`w-3.5 h-3.5 mr-1.5 ${isTestingCamera ? 'animate-pulse text-amber-500' : ''}`} />
-                {isTestingCamera ? 'Đang Kiểm Tra IP...' : 'Kiểm Tra Kết Nối Camera'}
-              </Button>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Địa chỉ IP Camera</Label>
+                <Input
+                  value={ipAddress}
+                  onChange={(e) => setIpAddress(e.target.value)}
+                  placeholder="Địa chỉ IP hoặc tên miền camera"
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Cổng kết nối (Port)</Label>
+                <Input
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                  placeholder="554"
+                  className="font-mono text-sm"
+                />
+              </div>
             </div>
 
-            {/* Diagnostic Result */}
-            {cameraTestResult && (
-              <div
-                className={`p-3 rounded-lg border text-xs flex flex-col gap-1.5 animate-in fade-in duration-300 ${
-                  cameraTestResult.success
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
-                }`}
-              >
-                <div className="flex items-center gap-2 font-bold">
-                  {cameraTestResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-red-500" />
-                  )}
-                  <span>{cameraTestResult.message}</span>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Tài khoản RTSP Camera (Username)</Label>
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  className="text-sm"
+                />
+              </div>
 
-                {cameraTestResult.success && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px] text-foreground">
-                    <div className="bg-background/80 p-1.5 rounded border border-border">
-                      <span className="text-muted-foreground block text-[10px]">ĐỘ TRỄ (PING):</span>
-                      <span className="font-bold text-emerald-500">{cameraTestResult.latencyMs} ms</span>
-                    </div>
-                    <div className="bg-background/80 p-1.5 rounded border border-border">
-                      <span className="text-muted-foreground block text-[10px]">ĐỘ PHÂN GIẢI:</span>
-                      <span className="font-bold">{cameraTestResult.resolution}</span>
-                    </div>
-                    <div className="bg-background/80 p-1.5 rounded border border-border">
-                      <span className="text-muted-foreground block text-[10px]">TỐC ĐỘ KHUNG HÌNH:</span>
-                      <span className="font-bold">{cameraTestResult.fps} FPS</span>
-                    </div>
-                    <div className="bg-background/80 p-1.5 rounded border border-border">
-                      <span className="text-muted-foreground block text-[10px]">BĂNG THÔNG:</span>
-                      <span className="font-bold">{cameraTestResult.bitrate}</span>
-                    </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Mật khẩu Camera (Được mã hóa)</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mật khẩu bảo vệ camera"
+                    className="pr-10 text-sm font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">RTSP Stream Path / URL đầy đủ</Label>
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  {ipAddress}:{port}
+                </span>
+              </div>
+              <Input
+                value={streamUrl}
+                onChange={(e) => setStreamUrl(e.target.value)}
+                placeholder="rtsp://user:password@camera-host:554/stream"
+                className="font-mono text-xs text-foreground bg-muted/30"
+              />
+            </div>
+
+            {/* Test Camera Connection Button & Result Panel */}
+            <div className="border border-border/80 rounded-xl p-4 bg-muted/30 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-primary" />
+                    Kiểm Tra Kết Nối Camera IP Thực Tế
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Gửi gói tin ping và kiểm tra cổng RTSP ({ipAddress}:{port}) theo cấu hình
+                  </div>
+                </div>
 
-          {/* AI Settings switches */}
-          <div className="border border-border/80 rounded-xl p-4 bg-muted/20 space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Tính năng AI nâng cao
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestCameraConnection}
+                  disabled={isTestingCamera || !ipAddress.trim()}
+                  className="text-xs border-primary/40 hover:bg-primary/10 text-primary font-semibold h-8"
+                >
+                  <Radio className={`w-3.5 h-3.5 mr-1.5 ${isTestingCamera ? 'animate-pulse text-amber-500' : ''}`} />
+                  {isTestingCamera ? 'Đang Kiểm Tra IP...' : 'Kiểm Tra Kết Nối Camera'}
+                </Button>
+              </div>
+
+              {/* Diagnostic Result */}
+              {cameraTestResult && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex flex-col gap-1.5 animate-in fade-in duration-300 ${
+                    cameraTestResult.success
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-bold">
+                    {cameraTestResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                    )}
+                    <span>{cameraTestResult.message}</span>
+                  </div>
+
+                  {cameraTestResult.success && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px] text-foreground">
+                      <div className="bg-background/80 p-1.5 rounded border border-border">
+                        <span className="text-muted-foreground block text-[10px]">ĐỘ TRỄ (PING):</span>
+                        <span className="font-bold text-emerald-500">{cameraTestResult.latencyMs} ms</span>
+                      </div>
+                      <div className="bg-background/80 p-1.5 rounded border border-border">
+                        <span className="text-muted-foreground block text-[10px]">ĐỘ PHÂN GIẢI:</span>
+                        <span className="font-bold">{cameraTestResult.resolution}</span>
+                      </div>
+                      <div className="bg-background/80 p-1.5 rounded border border-border">
+                        <span className="text-muted-foreground block text-[10px]">TỐC ĐỘ KHUNG HÌNH:</span>
+                        <span className="font-bold">{cameraTestResult.fps} FPS</span>
+                      </div>
+                      <div className="bg-background/80 p-1.5 rounded border border-border">
+                        <span className="text-muted-foreground block text-[10px]">BĂNG THÔNG:</span>
+                        <span className="font-bold">{cameraTestResult.bitrate}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-foreground">
-                  Tự động Zoom vùng biển số xe (Top-Left Zoom Box)
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Phóng to biển số xe vào ô chữ nhật góc trên bên trái màn hình như ảnh thực tế
-                </div>
+            {/* AI Settings switches */}
+            <div className="border border-border/80 rounded-xl p-4 bg-muted/20 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Tính năng AI nâng cao
               </div>
-              <Switch checked={autoZoom} onCheckedChange={setAutoZoom} />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">
+                    Tự động Zoom vùng biển số xe (Top-Left Zoom Box)
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Phóng to biển số xe vào ô chữ nhật góc trên bên trái màn hình như ảnh thực tế
+                  </div>
+                </div>
+                <Switch checked={autoZoom} onCheckedChange={setAutoZoom} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">
+                    Nhận diện phương tiện & Đối soát danh sách tự động
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Khung viền xanh bám theo xe, tự động đọc biển số và đối chiếu danh mục xe đã đăng ký
+                  </div>
+                </div>
+                <Switch checked={aiDetection} onCheckedChange={setAiDetection} />
+              </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <div>
-                <div className="text-sm font-semibold text-foreground">
-                  Nhận diện phương tiện & Đối soát danh sách tự động
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Khung viền xanh bám theo xe, tự động đọc biển số và đối chiếu danh mục xe đã đăng ký
-                </div>
-              </div>
-              <Switch checked={aiDetection} onCheckedChange={setAiDetection} />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button type="submit" className="text-sm h-10 px-5">
-              <Save className="w-4 h-4 mr-1.5" />
-              {isCreatingNew ? 'Thêm Kênh Camera Mới' : 'Lưu Cấu Hình Camera'}
-            </Button>
-          </div>
-        </form>
-
-        {/* Dialog: Delete Camera Confirmation */}
-        <Dialog open={Boolean(cameraToDelete)} onOpenChange={(open) => !open && setCameraToDelete(null)}>
-          <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-                Xóa Kênh Camera
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Bạn có chắc chắn muốn gỡ kênh Camera{' '}
-                <strong className="text-foreground font-semibold">[{cameraToDelete?.name}]</strong> khỏi hệ thống?
-              </DialogDescription>
-            </DialogHeader>
-
-            {cameraToDelete && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs space-y-1">
-                <div>Vị trí: <span className="font-mono text-foreground font-semibold">{cameraToDelete.location}</span></div>
-                <div>Địa chỉ IP: <span className="font-mono text-foreground">{cameraToDelete.ipAddress}:{cameraToDelete.port}</span></div>
-              </div>
-            )}
-
-            <DialogFooter className="gap-2 pt-2">
-              <Button variant="outline" onClick={() => setCameraToDelete(null)} disabled={isDeletingCam}>
-                Hủy
+            <div className="flex justify-end pt-2">
+              <Button type="submit" className="text-sm h-10 px-5">
+                <Save className="w-4 h-4 mr-1.5" />
+                {isCreatingNew ? 'Thêm Kênh Camera Mới' : 'Lưu Cấu Hình Camera'}
               </Button>
-              <Button variant="destructive" onClick={handleExecuteDeleteCamera} disabled={isDeletingCam}>
-                {isDeletingCam && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                Xác nhận xóa camera
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+          </form>
+
+          {/* Dialog: Delete Camera Confirmation */}
+          <Dialog open={Boolean(cameraToDelete)} onOpenChange={(open) => !open && setCameraToDelete(null)}>
+            <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  Xóa Kênh Camera
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Bạn có chắc chắn muốn gỡ kênh Camera{' '}
+                  <strong className="text-foreground font-semibold">[{cameraToDelete?.name}]</strong> khỏi hệ thống?
+                </DialogDescription>
+              </DialogHeader>
+
+              {cameraToDelete && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs space-y-1">
+                  <div>
+                    Vị trí: <span className="font-mono text-foreground font-semibold">{cameraToDelete.location}</span>
+                  </div>
+                  <div>
+                    Địa chỉ IP:{' '}
+                    <span className="font-mono text-foreground">
+                      {cameraToDelete.ipAddress}:{cameraToDelete.port}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 pt-2">
+                <Button variant="outline" onClick={() => setCameraToDelete(null)} disabled={isDeletingCam}>
+                  Hủy
+                </Button>
+                <Button variant="destructive" onClick={handleExecuteDeleteCamera} disabled={isDeletingCam}>
+                  {isDeletingCam && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                  Xác nhận xóa camera
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       )}
 
       {/* Sub Tab 3: Telegram Bot Notification */}

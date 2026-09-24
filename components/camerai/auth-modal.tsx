@@ -138,7 +138,8 @@ export function AuthModal({ isOpen, onClose, currentUser, onUserChanged }: AuthM
                 </span>
               ) : (
                 <span>
-                  ✓ Bạn đang ở chế độ Thành viên (Member): Chỉ xem trực tiếp luồng camera AI. Danh mục xe, nhật ký và cấu hình hệ thống được ẩn an toàn.
+                  ✓ Bạn đang ở chế độ Thành viên (Member): Chỉ xem trực tiếp luồng camera AI. Danh mục xe, nhật ký và
+                  cấu hình hệ thống được ẩn an toàn.
                 </span>
               )}
             </div>

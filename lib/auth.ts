@@ -2,9 +2,12 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { User } from './types'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || process.env.JWE_SECRET || 'camerai-super-secret-key-production-32-chars-minimum!',
-)
+const configuredSecret = process.env.JWT_SECRET || process.env.JWE_SECRET
+if (!configuredSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET or JWE_SECRET must be configured in production')
+}
+
+const JWT_SECRET = new TextEncoder().encode(configuredSecret || 'local-development-secret-change-me-before-deploying')
 
 const COOKIE_NAME = 'camerai_session'
 

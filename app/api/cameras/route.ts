@@ -39,12 +39,12 @@ export async function POST(req: NextRequest) {
       location: location?.trim() || 'CAN - KHU SUA CHUA',
       streamType: streamType || 'simulation',
       streamUrl: streamUrl?.trim() || '',
-      ipAddress: ipAddress?.trim() || '192.168.1.108',
+      ipAddress: ipAddress?.trim() || '',
       port: port ? Number(port) : 554,
-      username: username?.trim() || 'admin',
+      username: username?.trim() || '',
       password: password?.trim() || undefined,
       fps: fps ? Number(fps) : 30,
-      isOnline: true,
+      isOnline: false,
       aiDetectionEnabled: true,
       autoZoomPlate: autoZoomPlate !== false,
       createdAt: new Date().toISOString(),
@@ -103,13 +103,11 @@ export async function PUT(req: NextRequest) {
       location: location ? location.trim() : existing?.location || 'CAN - KHU SUA CHUA',
       streamType: streamType || existing?.streamType || 'rtsp',
       streamUrl: streamUrl !== undefined ? streamUrl.trim() : existing?.streamUrl || '',
-      ipAddress: ipAddress !== undefined ? ipAddress.trim() : existing?.ipAddress || '192.168.1.108',
+      ipAddress: ipAddress !== undefined ? ipAddress.trim() : existing?.ipAddress || '',
       port: port ? Number(port) : existing?.port || 554,
-      username: username !== undefined ? username.trim() : existing?.username || 'admin',
+      username: username !== undefined ? username.trim() : existing?.username || '',
       password:
-        password !== undefined && password.trim() && password !== '••••••••'
-          ? password.trim()
-          : existing?.password,
+        password !== undefined && password.trim() && password !== '••••••••' ? password.trim() : existing?.password,
       isOnline: isOnline !== undefined ? isOnline : existing?.isOnline === true,
       aiDetectionEnabled:
         aiDetectionEnabled !== undefined ? aiDetectionEnabled : existing?.aiDetectionEnabled !== false,
