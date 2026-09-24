@@ -39,6 +39,7 @@
     "@supabase/supabase-js": "^2.117.1",
     "@types/js-cookie": "^3.0.6",
     "@types/ws": "^8.18.1",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/sandbox": "^0.0.21",
     "@vercel/sdk": "^1.18.7",
     "ai": "5.0.51",
