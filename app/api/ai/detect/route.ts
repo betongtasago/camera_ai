@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { getGlobalVehicles, addGlobalLog, getGlobalLogs, getGlobalCameras } from '@/lib/storage'
 import { DetectionResult, Vehicle } from '@/lib/types'
-import { dbAddDetectionLog } from '@/lib/supabase'
+import { dbAddDetectionLog, dbGetVehicles, getSupabaseCredentials } from '@/lib/supabase'
 import { broadcastRealtime } from '@/lib/realtime'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -104,8 +104,9 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       }
     }
 
-    // The registered vehicle list in the app is authoritative for camera matching.
-    const fleet: Vehicle[] = getGlobalVehicles()
+    // Supabase is authoritative for camera matching when configured; memory is only a local fallback.
+    const fleetFromSupabase = getSupabaseCredentials().isConfigured ? await dbGetVehicles() : null
+    const fleet: Vehicle[] = fleetFromSupabase || getGlobalVehicles()
 
     const cleanDetectedPlate = detectedPlate.replace(/[^A-Z0-9]/g, '')
     const matched = fleet.find((v) => v.plateNumber.replace(/[^A-Z0-9]/g, '') === cleanDetectedPlate)
@@ -121,7 +122,7 @@ Nếu biển số khó thấy, hãy ước lượng biển số giống nhất. 
       confidence: confidence,
       isMatch: Boolean(matched),
       matchedVehicle: matched,
-      status: matched ? (matched.status === 'approved' ? 'passed' : 'restricted') : 'warning',
+      status: matched ? 'passed' : 'warning',
       details: {
         brand: matched?.company || brand,
         speedEstimate: 12 + Math.floor(Math.random() * 8) + ' km/h',

@@ -69,7 +69,6 @@ export async function dbGetVehicles(): Promise<Vehicle[] | null> {
       driverName: item.driver_name,
       vehicleType: item.vehicle_type,
       company: item.company,
-      status: item.status === 'blacklisted' ? 'blacklisted' : 'approved',
       notes: item.notes || undefined,
       registeredAt: item.registered_at,
     }))
@@ -90,7 +89,6 @@ export async function dbAddVehicle(vehicle: Vehicle): Promise<boolean> {
       driver_name: vehicle.driverName,
       vehicle_type: vehicle.vehicleType,
       company: vehicle.company || 'Bê Tông Sài Gòn',
-      status: vehicle.status || 'approved',
       notes: vehicle.notes || null,
       registered_at: vehicle.registeredAt || new Date().toISOString(),
     }
@@ -120,7 +118,6 @@ export async function dbUpdateVehicle(vehicle: Vehicle): Promise<boolean> {
         driver_name: vehicle.driverName,
         vehicle_type: vehicle.vehicleType,
         company: vehicle.company,
-        status: vehicle.status,
         notes: vehicle.notes || null,
       })
       .eq('id', vehicle.id)
@@ -517,10 +514,12 @@ CREATE TABLE IF NOT EXISTS public.camerai_vehicles (
   driver_name TEXT NOT NULL,
   vehicle_type TEXT NOT NULL,
   company TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'approved',
   notes TEXT,
   registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Xóa cột trạng thái cũ nếu database đã được tạo từ phiên bản trước.
+ALTER TABLE public.camerai_vehicles DROP COLUMN IF EXISTS status;
 
 -- 2. Bảng lưu cấu hình Camera IP & RTSP (Camera Configurations)
 CREATE TABLE IF NOT EXISTS public.camerai_cameras (
