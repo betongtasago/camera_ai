@@ -1,0 +1,15 @@
+{$GATEWAY_DOMAIN} {
+  encode gzip
+
+  # HLS playlists and segments.
+  handle_path /hls/* {
+    reverse_proxy mediamtx:8888
+  }
+
+  # MediaMTX WebRTC HTTP signaling and WHEP/WHIP endpoints.
+  handle_path /webrtc/* {
+    reverse_proxy mediamtx:8889
+  }
+
+  respond /healthz 200
+}

@@ -1,0 +1,27 @@
+logLevel: info
+
+# Browser-facing protocols are served by Caddy over HTTPS.
+hls: true
+hlsAddress: :8888
+hlsAllowOrigins: ['https://cameratnt.vercel.app']
+
+webrtc: true
+webrtcAddress: :8889
+webrtcAllowOrigins: ['https://cameratnt.vercel.app']
+
+# TCP avoids Docker/RTSP UDP port rewriting when pulling from the camera.
+rtsp: true
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+# MediaMTX reads the camera only when a browser requests the path.
+paths:
+  cam01:
+    source: ${CAM01_RTSP_URL}
+    sourceOnDemand: true
+  cam02:
+    source: ${CAM02_RTSP_URL}
+    sourceOnDemand: true
+  cam03:
+    source: ${CAM03_RTSP_URL}
+    sourceOnDemand: true

@@ -1,0 +1,41 @@
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MTX_RTSPTRANSPORTS: tcp
+      MTX_WEBRTCADDITIONALHOSTS: ${GATEWAY_HOST}
+      MTX_WEBRTCLOCALUDPADDRESS: :8189
+      MTX_WEBRTCLOCALTCPADDRESS: :8189
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "8554:8554/tcp"
+      - "8888:8888/tcp"
+      - "8889:8889/tcp"
+      - "8189:8189/tcp"
+      - "8189:8189/udp"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    env_file:
+      - .env
+    environment:
+      GATEWAY_DOMAIN: ${GATEWAY_DOMAIN}
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
