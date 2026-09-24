@@ -30,12 +30,31 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { ipAddress, port, streamType, streamUrl, username } = body
 
-    const targetIp = (ipAddress || '').trim()
-    const targetPort = Number(port) || 554
     const type = streamType || 'rtsp'
+    const resolvedStreamUrl = typeof streamUrl === 'string' ? streamUrl.trim() : ''
+
+    if (!resolvedStreamUrl) {
+      return NextResponse.json({ success: false, error: 'Chưa cấu hình link stream cho camera' }, { status: 400 })
+    }
+
+    let streamHost = ''
+    let streamPort: number | undefined
+    try {
+      const parsedUrl = new URL(resolvedStreamUrl)
+      streamHost = parsedUrl.hostname
+      streamPort = parsedUrl.port ? Number(parsedUrl.port) : undefined
+    } catch {
+      // Fall back to the separately configured host and port for RTSP inputs.
+    }
+
+    const targetIp = (ipAddress || streamHost || '').trim()
+    const targetPort = Number(port) || streamPort || (type === 'hls' || type === 'mjpeg' ? 80 : 554)
 
     if (!targetIp) {
-      return NextResponse.json({ success: false, error: 'Chưa nhập địa chỉ IP của Camera' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: 'Chưa nhập địa chỉ IP hoặc hostname của Camera' },
+        { status: 400 },
+      )
     }
 
     // Diagnostic validation: IP format
@@ -85,12 +104,6 @@ export async function POST(req: NextRequest) {
       updateGlobalCamera(updated)
       await dbUpdateCamera(updated)
       broadcastRealtime({ type: 'cameras_updated', camera: updated, timestamp: Date.now() })
-    }
-
-    // Construct standard RTSP URL if not provided
-    const resolvedStreamUrl = streamUrl?.trim()
-    if (!resolvedStreamUrl) {
-      return NextResponse.json({ success: false, error: 'Chưa cấu hình link stream cho camera' }, { status: 400 })
     }
 
     return NextResponse.json({

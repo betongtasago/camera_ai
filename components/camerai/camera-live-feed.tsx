@@ -53,6 +53,9 @@ export function CameraLiveFeed({
   // Stream state
   const [isPlaying, setIsPlaying] = useState(true)
   const hasRealSignal = currentCamera.isOnline === true && currentCamera.streamType !== 'simulation'
+  const browserStreamUrl = currentCamera.streamUrl?.trim() || ''
+  const canRenderBrowserStream =
+    hasRealSignal && /^(https?:\/\/)/i.test(browserStreamUrl) && currentCamera.streamType !== 'rtsp'
   const [isApproaching, setIsApproaching] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [zoomEnabled, setZoomEnabled] = useState(true)
@@ -744,15 +747,24 @@ export function CameraLiveFeed({
         className="relative w-full min-w-0 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-border group"
       >
         {/* Real Canvas Stream */}
-        {!useWebcam ? (
+        {useWebcam || canRenderBrowserStream ? (
+          <video
+            ref={videoRef}
+            src={useWebcam ? undefined : browserStreamUrl}
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            onError={() => toast.error('Không thể phát luồng camera trong trình duyệt')}
+            className="w-full h-full object-cover block"
+          />
+        ) : (
           <canvas
             ref={canvasRef}
             width={1280}
             height={720}
             className="w-full h-full object-cover block cursor-crosshair"
           />
-        ) : (
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover block" />
         )}
 
         {/* Automated Telegram Notification Pop-up Banner */}
